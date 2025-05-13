@@ -8,4 +8,11 @@ export default defineConfig({
     tailwindcss(),
     svelte()
   ],
+  server: {
+    host: true,
+    allowedHosts: [
+      'localhost',
+      'talented-unified-walleye.ngrok-free.app'
+    ],
+  },
 })
