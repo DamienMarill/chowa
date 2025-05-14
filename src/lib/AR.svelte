@@ -2,7 +2,7 @@
     import { onMount, onDestroy } from 'svelte';
     import 'aframe';
     import 'mind-ar/dist/mindar-image-aframe.prod.js';
-    let debug = true;
+    let debug = false;
 
     // Extension de l'interface trackAsset pour inclure les handlers de clic
     interface trackAsset {
@@ -61,7 +61,7 @@
     // Variables pour le système de particules
     let particles: Particle[] = [];
     let particleContainer: HTMLElement | null = null;
-    let particleCount = 30; // Nombre de pétales de sakura
+    let particleCount = 50; // Nombre de pétales de sakura
     // Liste des différentes images de pétales disponibles
     let sakuraImages = [
         '/sakuras/sakura1.png',
@@ -101,29 +101,38 @@
         { 
             name: 'background', 
             z: 0, 
-            ratio: 1.5,
+            ratio: 1.55,
             clickHandler: () => console.log('Background clicked!')
         },
-        { 
-            name: 'girl', 
+        { name: "pc", z: 0.2},
+        { name: 'bibi', z: 0.3 },
+        { name: 'whale', z: 0.3},
+        { name: 'paper_2', z: 0.3, clickHandler: () => console.log('Paper 2 clicked!') },
+        { name: 'paper_6', z: 0.3, clickHandler: () => console.log('Paper 6 clicked!') },
+        { name: 'phone', z: 0.35},
+        { name: 'book_2', z: 0.35},
+        {
+            name: 'girl',
             z: 0.4,
             clickHandler: () => console.log('Girl clicked!')
         },
+        { name: 'paper_8', z: 0.4, clickHandler: () => console.log('Paper 8 clicked!') },
         { 
             name: 'scandal', 
-            z: 0.5,
+            z: 0.45,
             clickHandler: () => console.log('Scandal clicked!')
         },
 
+        { name: 'book_1', z: 0.45},
+        { name: 'book_3', z: 0.5},
+        { name: 'mimiqui', z: 0.5},
+
         //paper - tu peux personnaliser les actions pour chaque papier ici
         { name: 'paper_1', z: 0.5, clickHandler: () => console.log('Paper 1 clicked!') },
-        { name: 'paper_2', z: 0.3, clickHandler: () => console.log('Paper 2 clicked!') },
-        { name: 'paper_3', z: 0.6, clickHandler: () => console.log('Paper 3 clicked!') },
         { name: 'paper_4', z: 0.5, clickHandler: () => console.log('Paper 4 clicked!') },
-        { name: 'paper_5', z: 0.6, clickHandler: () => console.log('Paper 5 clicked!') },
-        { name: 'paper_6', z: 0.3, clickHandler: () => console.log('Paper 6 clicked!') },
         { name: 'paper_7', z: 0.5, clickHandler: () => console.log('Paper 7 clicked!') },
-        { name: 'paper_8', z: 0.4, clickHandler: () => console.log('Paper 8 clicked!') },
+        { name: 'paper_3', z: 0.6, clickHandler: () => console.log('Paper 3 clicked!') },
+        { name: 'paper_5', z: 0.6, clickHandler: () => console.log('Paper 5 clicked!') },
     ];
 
     onMount(async () => {
