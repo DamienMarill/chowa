@@ -2,7 +2,7 @@
     import { onMount, onDestroy } from 'svelte';
     import 'aframe';
     import 'mind-ar/dist/mindar-image-aframe.prod.js';
-    let debug = true;
+    let debug = false;
 
     // Extension de l'interface trackAsset pour inclure les handlers de clic
     interface trackAsset {
