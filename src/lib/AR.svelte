@@ -12,6 +12,26 @@
         clickHandler?: () => void
     }
 
+    // Interface pour les particules
+    interface Particle {
+        id: number;
+        x: number;
+        y: number;
+        z: number;
+        rotationX: number;
+        rotationY: number;
+        rotationZ: number;
+        scale: number;
+        speedY: number;
+        speedRotationX: number;
+        speedRotationY: number;
+        speedRotationZ: number;
+        swayFrequency: number;
+        swayAmplitude: number;
+        swayOffset: number;
+        element: HTMLElement | null;
+    }
+
     let assetRatio = 1;
 
     function getAssetWidth(ratio: number){
@@ -36,8 +56,21 @@
     let canvas: HTMLCanvasElement;
     let ctx: CanvasRenderingContext2D;
     
+    // Variables pour le système de particules
+    let particles: Particle[] = [];
+    let particleContainer: HTMLElement | null = null;
+    let particleCount = 30; // Nombre de pétales de sakura
+    let particleImage = '/sakura.png'; // Chemin vers l'image du pétale (tu devras créer cette image)
+    let lastParticleId = 0;
+    
+    // Valeurs Z possibles pour les particules (intercalées entre les images)
+    // Analyse des valeurs z existantes : 0, 0.3, 0.4, 0.5, 0.6
+    // Nous créons des positions intermédiaires pour placer les particules
+    let possibleZValues = [0.05, 0.15, 0.25, 0.35, 0.45];
+    
     // Variable pour le contrôle d'animation
     let animationFrameId: number | null = null;
+    let particleAnimationId: number | null = null;
 
     let images: trackAsset[] = [
         { 
@@ -90,6 +123,9 @@
                     // Réduire la distance minimale
                     camera.setAttribute('near', '0.01');
                 }
+                
+                // Initialiser le système de particules
+                initParticleSystem();
             });
         }
 
@@ -106,6 +142,142 @@
             startHitboxUpdateLoop();
         }, 2000);
     });
+    
+    // Initialisation du système de particules
+    function initParticleSystem() {
+        // Trouver le conteneur AR où placer les particules
+        const arEntity = document.querySelector('a-entity[mindar-image-target]');
+        if (!arEntity) {
+            console.error('AR entity not found for particle system');
+            return;
+        }
+        
+        // Créer un conteneur pour les particules
+        particleContainer = document.createElement('a-entity');
+        particleContainer.setAttribute('id', 'particle-container');
+        arEntity.appendChild(particleContainer);
+        
+        // Générer les particules initiales
+        generateParticles();
+        
+        // Démarrer l'animation des particules
+        startParticleAnimation();
+    }
+    
+    // Création d'une particule
+    function createParticle(): Particle {
+        lastParticleId++;
+        
+        // Position aléatoire sur l'axe X
+        const x = (Math.random() * 2 - 1) * 1.2; // -1.2 à 1.2
+        
+        // Position Y au-dessus de la scène
+        const y = 1.2 + Math.random() * 0.5; // 1.2 à 1.7
+        
+        // Profondeur Z aléatoire parmi les valeurs possibles
+        const z = possibleZValues[Math.floor(Math.random() * possibleZValues.length)];
+        
+        // Créer l'objet particule
+        const particle: Particle = {
+            id: lastParticleId,
+            x,
+            y,
+            z,
+            rotationX: Math.random() * 360,
+            rotationY: Math.random() * 360,
+            rotationZ: Math.random() * 360,
+            scale: 0.05 + Math.random() * 0.15, // Taille aléatoire entre 0.05 et 0.2
+            speedY: 0.003 + Math.random() * 0.005, // Vitesse de chute
+            speedRotationX: (Math.random() - 0.5) * 0.8, // Vitesse de rotation X
+            speedRotationY: (Math.random() - 0.5) * 0.8, // Vitesse de rotation Y
+            speedRotationZ: (Math.random() - 0.5) * 0.8, // Vitesse de rotation Z
+            swayFrequency: 0.5 + Math.random() * 1.5, // Fréquence de l'oscillation
+            swayAmplitude: 0.001 + Math.random() * 0.003, // Amplitude de l'oscillation
+            swayOffset: Math.random() * Math.PI * 2, // Décalage pour varier le mouvement
+            element: null
+        };
+        
+        // Créer l'élément A-Frame correspondant
+        if (particleContainer) {
+            const el = document.createElement('a-plane');
+            el.setAttribute('id', `particle-${particle.id}`);
+            el.setAttribute('src', particleImage);
+            el.setAttribute('width', '1');
+            el.setAttribute('height', '1');
+            el.setAttribute('scale', `${particle.scale} ${particle.scale} ${particle.scale}`);
+            el.setAttribute('position', `${particle.x} ${particle.y} ${particle.z}`);
+            el.setAttribute('rotation', `${particle.rotationX} ${particle.rotationY} ${particle.rotationZ}`);
+            el.setAttribute('material', 'transparent: true; alphaTest: 0.5; depthTest: true; depthWrite: false;');
+            
+            particleContainer.appendChild(el);
+            particle.element = el;
+        }
+        
+        return particle;
+    }
+    
+    // Génération des particules initiales
+    function generateParticles() {
+        // Vider le tableau des particules
+        particles = [];
+        
+        // Créer les nouvelles particules
+        for (let i = 0; i < particleCount; i++) {
+            // Répartir la position Y initiale pour éviter que toutes les particules apparaissent en même temps
+            const particle = createParticle();
+            particle.y = -1 + Math.random() * 3; // Répartir sur toute la hauteur de la scène
+            particles.push(particle);
+        }
+    }
+    
+    // Animation des particules
+    function updateParticles(deltaTime: number) {
+        for (let i = 0; i < particles.length; i++) {
+            const particle = particles[i];
+            
+            // Mettre à jour la position Y (chute)
+            particle.y -= particle.speedY * deltaTime;
+            
+            // Oscillation latérale (effet de flottement)
+            const swayX = Math.sin((Date.now() * 0.001 * particle.swayFrequency) + particle.swayOffset) * particle.swayAmplitude * deltaTime;
+            particle.x += swayX;
+            
+            // Rotation
+            particle.rotationX += particle.speedRotationX * deltaTime;
+            particle.rotationY += particle.speedRotationY * deltaTime;
+            particle.rotationZ += particle.speedRotationZ * deltaTime;
+            
+            // Vérifier si la particule est sortie de la scène
+            if (particle.y < -1.5) {
+                // Réinitialiser la particule en haut
+                particle.y = 1.2 + Math.random() * 0.5;
+                particle.x = (Math.random() * 2 - 1) * 1.2;
+            }
+            
+            // Mettre à jour l'élément A-Frame
+            if (particle.element) {
+                particle.element.setAttribute('position', `${particle.x} ${particle.y} ${particle.z}`);
+                particle.element.setAttribute('rotation', `${particle.rotationX} ${particle.rotationY} ${particle.rotationZ}`);
+            }
+        }
+    }
+    
+    // Démarrer l'animation des particules
+    function startParticleAnimation() {
+        let lastTime = performance.now();
+        
+        const animateParticles = () => {
+            const currentTime = performance.now();
+            const deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+            
+            updateParticles(deltaTime);
+            
+            particleAnimationId = requestAnimationFrame(animateParticles);
+        };
+        
+        particleAnimationId = requestAnimationFrame(animateParticles);
+    }
 
     // Configuration du système de détection de clics
     function setupClickDetection() {
@@ -426,9 +598,14 @@
     }
 
     onDestroy(() => {
-        // Arrêter la boucle d'animation
+        // Arrêter la boucle d'animation des hitbox
         if (animationFrameId !== null) {
             cancelAnimationFrame(animationFrameId);
+        }
+        
+        // Arrêter la boucle d'animation des particules
+        if (particleAnimationId !== null) {
+            cancelAnimationFrame(particleAnimationId);
         }
         
         // Nettoyage
@@ -447,6 +624,11 @@
 
 <main>
     <a-scene mindar-image="imageTargetSrc: /chowa.mind;" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false" renderer="logarithmicDepthBuffer: true; colorManagement: true; highPerformance: true; physicallyCorrectLights: true;">
+        <a-assets>
+            <!-- Précharger l'image de la particule -->
+            <img id="sakura-particle" src="/sakura.png" />
+        </a-assets>
+        
         <a-camera position="0 0 0" look-controls="enabled: false" near="0.01" far="10000"></a-camera>
         <a-entity mindar-image-target="targetIndex: 0">
             <!-- Image originale -->
