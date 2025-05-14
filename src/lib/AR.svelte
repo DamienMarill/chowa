@@ -2,7 +2,7 @@
     import { onMount, onDestroy } from 'svelte';
     import 'aframe';
     import 'mind-ar/dist/mindar-image-aframe.prod.js';
-    let debug = false;
+    let debug = true;
 
     // Extension de l'interface trackAsset pour inclure les handlers de clic
     interface trackAsset {
@@ -539,45 +539,286 @@
         });
     }
 
-    // Fonction de détection de contour
+    // Fonction de détection de contour améliorée
     function detectContour(imageData: ImageData): {x: number, y: number}[] {
         const width = imageData.width;
         const height = imageData.height;
         const data = imageData.data;
-        const points: {x: number, y: number}[] = [];
         
-        // Pour plus de simplicité, nous créons un contour rectangulaire 
-        // qui englobe tous les pixels non transparents
-        let minX = width;
-        let minY = height;
-        let maxX = 0;
-        let maxY = 0;
+        // Paramètres pour un contour plus précis
+        const step = 5; // Distance entre les points échantillonnés (plus petit = plus précis mais plus lourd)
+        const outlinePoints: {x: number, y: number}[] = [];
+        const threshold = 127; // Seuil pour considérer un pixel comme non transparent
         
-        // Chercher les limites des pixels non transparents
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                const idx = (y * width + x) * 4;
-                const alpha = data[idx + 3];
+        // 1. Trouver les contours par balayage en croix depuis le centre
+        const directions = [
+            { dx: 1, dy: 0 },   // droite
+            { dx: 0, dy: 1 },   // bas
+            { dx: -1, dy: 0 },  // gauche
+            { dx: 0, dy: -1 },  // haut
+            { dx: 1, dy: 1 },   // diagonale bas-droite
+            { dx: -1, dy: 1 },  // diagonale bas-gauche
+            { dx: -1, dy: -1 }, // diagonale haut-gauche
+            { dx: 1, dy: -1 }   // diagonale haut-droite
+        ];
+        
+        // 2. Trouver le centre de l'image approximativement
+        let centerX = Math.floor(width / 2);
+        let centerY = Math.floor(height / 2);
+        
+        // Ajuster le centre si besoin pour être sur un pixel non transparent
+        let found = false;
+        const radius = Math.min(width, height) / 4;
+        
+        // Chercher autour du centre un pixel non transparent
+        for (let r = 0; r < radius && !found; r++) {
+            for (let angle = 0; angle < Math.PI * 2 && !found; angle += Math.PI / 8) {
+                const testX = Math.floor(centerX + r * Math.cos(angle));
+                const testY = Math.floor(centerY + r * Math.sin(angle));
                 
-                if (alpha > 127) { // Pixel non transparent
-                    minX = Math.min(minX, x);
-                    minY = Math.min(minY, y);
-                    maxX = Math.max(maxX, x);
-                    maxY = Math.max(maxY, y);
+                if (testX >= 0 && testX < width && testY >= 0 && testY < height) {
+                    const idx = (testY * width + testX) * 4;
+                    if (data[idx + 3] > threshold) {
+                        centerX = testX;
+                        centerY = testY;
+                        found = true;
+                    }
                 }
             }
         }
         
-        // Si nous avons trouvé des pixels non transparents
-        if (minX <= maxX && minY <= maxY) {
-            // Créer un rectangle qui englobe la partie visible
-            points.push({x: minX, y: minY});
-            points.push({x: maxX, y: minY});
-            points.push({x: maxX, y: maxY});
-            points.push({x: minX, y: maxY});
+        // Si on n'a pas trouvé de pixel non transparent, retourner un rectangle englobant de base
+        if (!found) {
+            let minX = width;
+            let minY = height;
+            let maxX = 0;
+            let maxY = 0;
+            
+            // Chercher les limites des pixels non transparents
+            for (let y = 0; y < height; y += step) {
+                for (let x = 0; x < width; x += step) {
+                    const idx = (y * width + x) * 4;
+                    const alpha = data[idx + 3];
+                    
+                    if (alpha > threshold) {
+                        minX = Math.min(minX, x);
+                        minY = Math.min(minY, y);
+                        maxX = Math.max(maxX, x);
+                        maxY = Math.max(maxY, y);
+                    }
+                }
+            }
+            
+            // Si nous avons trouvé des pixels non transparents
+            if (minX <= maxX && minY <= maxY) {
+                // Créer un rectangle qui englobe la partie visible
+                return [
+                    {x: minX, y: minY},
+                    {x: maxX, y: minY},
+                    {x: maxX, y: maxY},
+                    {x: minX, y: maxY}
+                ];
+            }
+            
+            return [];
         }
         
-        return points;
+        // 3. Pour chaque direction, lancer des rayons depuis le centre
+        const numRays = 36; // Nombre de rayons à lancer (plus = plus précis)
+        
+        for (let angle = 0; angle < 2 * Math.PI; angle += (2 * Math.PI) / numRays) {
+            let x = centerX;
+            let y = centerY;
+            let lastOpaque = true;
+            
+            // Étendre le rayon jusqu'à atteindre la bordure ou un pixel transparent
+            const maxDistance = Math.max(width, height);
+            for (let dist = 0; dist < maxDistance; dist++) {
+                x = Math.floor(centerX + Math.cos(angle) * dist);
+                y = Math.floor(centerY + Math.sin(angle) * dist);
+                
+                // Vérifier les limites
+                if (x < 0 || x >= width || y < 0 || y >= height) {
+                    // Ajouter le dernier point avant de sortir des limites
+                    if (lastOpaque) {
+                        outlinePoints.push({x, y});
+                    }
+                    break;
+                }
+                
+                const idx = (y * width + x) * 4;
+                const isOpaque = data[idx + 3] > threshold;
+                
+                // Si on passe de opaque à transparent, on a trouvé un point de contour
+                if (lastOpaque && !isOpaque) {
+                    outlinePoints.push({x, y});
+                    break;
+                }
+                
+                lastOpaque = isOpaque;
+            }
+        }
+        
+        // 4. Parcourir les bordures pour ajouter des points supplémentaires
+        // Bordure supérieure
+        for (let x = 0; x < width; x += step) {
+            for (let y = 0; y < height; y += 1) {
+                const idx = (y * width + x) * 4;
+                if (data[idx + 3] > threshold) {
+                    outlinePoints.push({x, y});
+                    break;
+                }
+            }
+        }
+        
+        // Bordure inférieure
+        for (let x = 0; x < width; x += step) {
+            for (let y = height - 1; y >= 0; y -= 1) {
+                const idx = (y * width + x) * 4;
+                if (data[idx + 3] > threshold) {
+                    outlinePoints.push({x, y});
+                    break;
+                }
+            }
+        }
+        
+        // Bordure gauche
+        for (let y = 0; y < height; y += step) {
+            for (let x = 0; x < width; x += 1) {
+                const idx = (y * width + x) * 4;
+                if (data[idx + 3] > threshold) {
+                    outlinePoints.push({x, y});
+                    break;
+                }
+            }
+        }
+        
+        // Bordure droite
+        for (let y = 0; y < height; y += step) {
+            for (let x = width - 1; x >= 0; x -= 1) {
+                const idx = (y * width + x) * 4;
+                if (data[idx + 3] > threshold) {
+                    outlinePoints.push({x, y});
+                    break;
+                }
+            }
+        }
+        
+        // 5. Si trop peu de points, revenir à un rectangle englobant
+        if (outlinePoints.length < 6) {
+            let minX = width;
+            let minY = height;
+            let maxX = 0;
+            let maxY = 0;
+            
+            for (const point of outlinePoints) {
+                minX = Math.min(minX, point.x);
+                minY = Math.min(minY, point.y);
+                maxX = Math.max(maxX, point.x);
+                maxY = Math.max(maxY, point.y);
+            }
+            
+            return [
+                {x: minX, y: minY},
+                {x: maxX, y: minY},
+                {x: maxX, y: maxY},
+                {x: minX, y: maxY}
+            ];
+        }
+        
+        // 6. Trier les points dans le sens horaire pour créer un polygone fermé
+        const sortedPoints = sortPointsClockwise(outlinePoints, centerX, centerY);
+        
+        // 7. Simplifier le polygone avec l'algorithme de Douglas-Peucker
+        const simplifiedPoints = simplifyPolygon(sortedPoints, 5.0); // Tolérance pour la simplification
+        
+        return simplifiedPoints;
+    }
+    
+    // Fonction pour trier les points dans le sens horaire
+    function sortPointsClockwise(points: {x: number, y: number}[], centerX: number, centerY: number): {x: number, y: number}[] {
+        return [...points].sort((a, b) => {
+            const angleA = Math.atan2(a.y - centerY, a.x - centerX);
+            const angleB = Math.atan2(b.y - centerY, b.x - centerX);
+            return angleA - angleB;
+        });
+    }
+    
+    // Algorithme de simplification de Douglas-Peucker pour réduire le nombre de points
+    function simplifyPolygon(points: {x: number, y: number}[], tolerance: number): {x: number, y: number}[] {
+        if (points.length <= 2) return points;
+        
+        // Fonction pour calculer la distance d'un point à une ligne
+        function perpendicularDistance(point: {x: number, y: number}, lineStart: {x: number, y: number}, lineEnd: {x: number, y: number}): number {
+            const dx = lineEnd.x - lineStart.x;
+            const dy = lineEnd.y - lineStart.y;
+            
+            // Si la ligne est un point, retourner la distance euclidienne au point
+            if (dx === 0 && dy === 0) {
+                return Math.sqrt((point.x - lineStart.x) ** 2 + (point.y - lineStart.y) ** 2);
+            }
+            
+            // Distance normalisée le long de la ligne
+            const t = ((point.x - lineStart.x) * dx + (point.y - lineStart.y) * dy) / (dx * dx + dy * dy);
+            
+            if (t < 0) {
+                // Point est avant le début de la ligne
+                return Math.sqrt((point.x - lineStart.x) ** 2 + (point.y - lineStart.y) ** 2);
+            }
+            if (t > 1) {
+                // Point est après la fin de la ligne
+                return Math.sqrt((point.x - lineEnd.x) ** 2 + (point.y - lineEnd.y) ** 2);
+            }
+            
+            // Point projette sur la ligne
+            const projX = lineStart.x + t * dx;
+            const projY = lineStart.y + t * dy;
+            
+            return Math.sqrt((point.x - projX) ** 2 + (point.y - projY) ** 2);
+        }
+        
+        // Implémenter l'algorithme de Douglas-Peucker récursivement
+        function douglasPeucker(pts: {x: number, y: number}[], startIndex: number, endIndex: number, tolerance: number): {x: number, y: number}[] {
+            if (endIndex <= startIndex + 1) {
+                return [pts[startIndex]];
+            }
+            
+            // Trouver le point avec la plus grande distance
+            let maxDistance = 0;
+            let maxIndex = 0;
+            
+            for (let i = startIndex + 1; i < endIndex; i++) {
+                const distance = perpendicularDistance(pts[i], pts[startIndex], pts[endIndex]);
+                if (distance > maxDistance) {
+                    maxDistance = distance;
+                    maxIndex = i;
+                }
+            }
+            
+            // Si la distance max est supérieure à la tolérance, diviser et simplifier
+            let result: {x: number, y: number}[] = [];
+            if (maxDistance > tolerance) {
+                const left = douglasPeucker(pts, startIndex, maxIndex, tolerance);
+                const right = douglasPeucker(pts, maxIndex, endIndex, tolerance);
+                
+                result = [...left, ...right];
+            } else {
+                result = [pts[startIndex], pts[endIndex]];
+            }
+            
+            return result;
+        }
+        
+        // Appliquer l'algorithme au polygone
+        const result = douglasPeucker(points, 0, points.length - 1, tolerance);
+        
+        // Assurons-nous que le dernier point est inclus si nécessaire
+        if (result[result.length - 1].x !== points[points.length - 1].x || 
+            result[result.length - 1].y !== points[points.length - 1].y) {
+            result.push(points[points.length - 1]);
+        }
+        
+        return result;
     }
 
     // Convertir les coordonnées de contour de l'image aux coordonnées d'écran
