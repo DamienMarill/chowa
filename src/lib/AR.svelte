@@ -23,6 +23,7 @@
         rotationZ: number;
         scale: number;
         speedY: number;
+        speedX: number; // Ajout d'une vitesse horizontale pour le mouvement vers la droite
         speedRotationX: number;
         speedRotationY: number;
         speedRotationZ: number;
@@ -30,6 +31,7 @@
         swayAmplitude: number;
         swayOffset: number;
         element: HTMLElement | null;
+        image: string; // Pour stocker le chemin de l'image utilisée
     }
 
     let assetRatio = 1;
@@ -60,13 +62,36 @@
     let particles: Particle[] = [];
     let particleContainer: HTMLElement | null = null;
     let particleCount = 30; // Nombre de pétales de sakura
-    let particleImage = '/sakura.png'; // Chemin vers l'image du pétale (tu devras créer cette image)
+    // Liste des différentes images de pétales disponibles
+    let sakuraImages = [
+        '/sakuras/sakura1.png',
+        '/sakuras/sakura2.png',
+        '/sakuras/sakura3.png',
+        '/sakuras/sakura4.png',
+        '/sakuras/sakura5.png',
+        '/sakuras/sakura6.png',
+        '/sakuras/sakura7.png',
+        '/sakuras/petal1.png',
+        '/sakuras/petal2.png',
+        '/sakuras/petal3.png',
+        '/sakuras/petal4.png',
+        '/sakuras/petal5.png',
+        '/sakuras/petal6.png',
+        '/sakuras/petal7.png',
+        '/sakuras/petal8.png',
+        '/sakuras/petal9.png',
+        '/sakuras/petal10.png',
+        '/sakuras/petal11.png',
+        '/sakuras/petal12.png',
+        '/sakuras/petal13.png',
+        '/sakuras/petal14.png',
+    ];
     let lastParticleId = 0;
     
     // Valeurs Z possibles pour les particules (intercalées entre les images)
     // Analyse des valeurs z existantes : 0, 0.3, 0.4, 0.5, 0.6
     // Nous créons des positions intermédiaires pour placer les particules
-    let possibleZValues = [0.05, 0.15, 0.25, 0.35, 0.45];
+    let possibleZValues = [0.05, 0.15, 0.25, 0.35];
     
     // Variable pour le contrôle d'animation
     let animationFrameId: number | null = null;
@@ -164,18 +189,27 @@
         startParticleAnimation();
     }
     
+    // Sélectionner aléatoirement une image de pétale
+    function getRandomSakuraImage(): string {
+        const randomIndex = Math.floor(Math.random() * sakuraImages.length);
+        return sakuraImages[randomIndex];
+    }
+    
     // Création d'une particule
     function createParticle(): Particle {
         lastParticleId++;
         
-        // Position aléatoire sur l'axe X
-        const x = (Math.random() * 2 - 1) * 1.2; // -1.2 à 1.2
+        // Position aléatoire sur l'axe X (désormais légèrement plus à gauche pour laisser de la marge pour la dérive)
+        const x = (Math.random() * 2 - 1.5) * 1.2; // Plus vers la gauche pour qu'elles dérivent vers la droite
         
         // Position Y au-dessus de la scène
         const y = 1.2 + Math.random() * 0.5; // 1.2 à 1.7
         
         // Profondeur Z aléatoire parmi les valeurs possibles
         const z = possibleZValues[Math.floor(Math.random() * possibleZValues.length)];
+        
+        // Sélectionner aléatoirement une image de pétale
+        const image = getRandomSakuraImage();
         
         // Créer l'objet particule
         const particle: Particle = {
@@ -186,22 +220,24 @@
             rotationX: Math.random() * 360,
             rotationY: Math.random() * 360,
             rotationZ: Math.random() * 360,
-            scale: 0.05 + Math.random() * 0.15, // Taille aléatoire entre 0.05 et 0.2
-            speedY: 0.003 + Math.random() * 0.005, // Vitesse de chute
-            speedRotationX: (Math.random() - 0.5) * 0.8, // Vitesse de rotation X
-            speedRotationY: (Math.random() - 0.5) * 0.8, // Vitesse de rotation Y
-            speedRotationZ: (Math.random() - 0.5) * 0.8, // Vitesse de rotation Z
-            swayFrequency: 0.5 + Math.random() * 1.5, // Fréquence de l'oscillation
-            swayAmplitude: 0.001 + Math.random() * 0.003, // Amplitude de l'oscillation
+            scale: 0.01 + Math.random() * 0.09, // Taille aléatoire entre 0.05 et 0.2
+            speedY: 0.0005 + Math.random() * 0.0008, // Vitesse de chute TRÈS réduite (environ 6x plus lent)
+            speedX: 0.0002 + Math.random() * 0.0003, // Vitesse horizontale (dérive vers la droite)
+            speedRotationX: (Math.random() - 0.5) * 0.2, // Vitesse de rotation X (plus lente)
+            speedRotationY: (Math.random() - 0.5) * 0.2, // Vitesse de rotation Y (plus lente)
+            speedRotationZ: (Math.random() - 0.5) * 0.2, // Vitesse de rotation Z (plus lente)
+            swayFrequency: 0.2 + Math.random() * 0.4, // Fréquence de l'oscillation (plus lente)
+            swayAmplitude: 0.0005 + Math.random() * 0.001, // Amplitude de l'oscillation (plus légère)
             swayOffset: Math.random() * Math.PI * 2, // Décalage pour varier le mouvement
-            element: null
+            element: null,
+            image: image
         };
         
         // Créer l'élément A-Frame correspondant
         if (particleContainer) {
             const el = document.createElement('a-plane');
             el.setAttribute('id', `particle-${particle.id}`);
-            el.setAttribute('src', particleImage);
+            el.setAttribute('src', particle.image);
             el.setAttribute('width', '1');
             el.setAttribute('height', '1');
             el.setAttribute('scale', `${particle.scale} ${particle.scale} ${particle.scale}`);
@@ -238,7 +274,10 @@
             // Mettre à jour la position Y (chute)
             particle.y -= particle.speedY * deltaTime;
             
-            // Oscillation latérale (effet de flottement)
+            // Mettre à jour la position X (dérive horizontale vers la droite)
+            particle.x += particle.speedX * deltaTime;
+            
+            // Oscillation latérale (effet de flottement plus subtil)
             const swayX = Math.sin((Date.now() * 0.001 * particle.swayFrequency) + particle.swayOffset) * particle.swayAmplitude * deltaTime;
             particle.x += swayX;
             
@@ -247,11 +286,18 @@
             particle.rotationY += particle.speedRotationY * deltaTime;
             particle.rotationZ += particle.speedRotationZ * deltaTime;
             
-            // Vérifier si la particule est sortie de la scène
-            if (particle.y < -1.5) {
-                // Réinitialiser la particule en haut
+            // Vérifier si la particule est sortie de la scène (par le bas ou la droite)
+            if (particle.y < -1.5 || particle.x > 1.5) {
+                // Réinitialiser la particule en haut et à gauche
                 particle.y = 1.2 + Math.random() * 0.5;
-                particle.x = (Math.random() * 2 - 1) * 1.2;
+                particle.x = -1.5 + Math.random() * -0.5; // Réapparaît à gauche
+                
+                // Changer de type de pétale lors du recyclage pour plus de variété
+                if (particle.element) {
+                    const newImage = getRandomSakuraImage();
+                    particle.image = newImage;
+                    particle.element.setAttribute('src', newImage);
+                }
             }
             
             // Mettre à jour l'élément A-Frame
@@ -625,8 +671,10 @@
 <main>
     <a-scene mindar-image="imageTargetSrc: /chowa.mind;" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false" renderer="logarithmicDepthBuffer: true; colorManagement: true; highPerformance: true; physicallyCorrectLights: true;">
         <a-assets>
-            <!-- Précharger l'image de la particule -->
-            <img id="sakura-particle" src="/sakura.png" />
+            <!-- Précharger les images de sakura -->
+            {#each sakuraImages as image, index}
+                <img id="sakura-{index+1}" src="{image}" />
+            {/each}
         </a-assets>
         
         <a-camera position="0 0 0" look-controls="enabled: false" near="0.01" far="10000"></a-camera>
