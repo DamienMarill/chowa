@@ -2,7 +2,7 @@
     import { onMount, onDestroy } from 'svelte';
     import 'aframe';
     import 'mind-ar/dist/mindar-image-aframe.prod.js';
-    let debug = false;
+    let debug = true;
 
     // Extension de l'interface trackAsset pour inclure les handlers de clic
     interface trackAsset {
@@ -31,9 +31,13 @@
         imageId: string;
         path: Path2D;
         z: number;
+        aframeEl: Element; // Stocke la référence à l'élément a-frame pour la mise à jour
     }[] = [];
     let canvas: HTMLCanvasElement;
     let ctx: CanvasRenderingContext2D;
+    
+    // Variable pour le contrôle d'animation
+    let animationFrameId: number | null = null;
 
     let images: trackAsset[] = [
         { 
@@ -92,11 +96,14 @@
         // Initialiser le système de détection de clics
         setupClickDetection();
         
-        // Générer les hitbox après que les images AR sont chargées
+        // Générer les hitbox initiales après que les images AR sont chargées
         // Note: Nous utilisons un délai pour s'assurer que les images sont chargées
         setTimeout(async () => {
             await generateHitboxes();
-            console.log('Hitboxes generated:', hitboxes.length);
+            console.log('Initial hitboxes generated:', hitboxes.length);
+            
+            // Démarrer la boucle d'animation pour mettre à jour les hitbox
+            startHitboxUpdateLoop();
         }, 2000);
     });
 
@@ -119,38 +126,33 @@
         const scene = document.querySelector('a-scene');
         if (scene) {
             scene.addEventListener('click', handleSceneClick);
-            
-            // Si tu veux voir les hitbox en mode debug
-            if (debug) {
-                scene.addEventListener('loaded', () => {
-                    // We'll add debug visualization in the update loop
-                    scene.addEventListener('renderstart', () => {
-                        // Clear the canvas
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        
-                        // Draw hitboxes if they exist
-                        if (hitboxes.length > 0 && debug) {
-                            hitboxes.forEach(hitbox => {
-                                ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
-                                ctx.lineWidth = 2;
-                                ctx.stroke(hitbox.path);
-                            });
-                        }
-                    });
-                });
-            }
         }
         
         // Gérer le redimensionnement de la fenêtre
         window.addEventListener('resize', () => {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            // Nous devrons régénérer les hitbox car leurs positions peuvent avoir changé
-            generateHitboxes();
+            // Forcer une mise à jour des hitbox au redimensionnement
+            updateHitboxes();
         });
     }
 
-    // Génération des hitbox à partir des images
+    // Boucle d'animation pour mettre à jour en continu les hitbox
+    function startHitboxUpdateLoop() {
+        // Fonction pour la mise à jour des hitbox à chaque frame
+        const updateLoop = () => {
+            // Mettre à jour les positions des hitbox
+            updateHitboxes();
+            
+            // Continuer la boucle
+            animationFrameId = requestAnimationFrame(updateLoop);
+        };
+        
+        // Démarrer la boucle
+        animationFrameId = requestAnimationFrame(updateLoop);
+    }
+
+    // Génération initiale des hitbox à partir des images
     async function generateHitboxes() {
         hitboxes = []; // Réinitialiser les hitbox existantes
         
@@ -166,8 +168,67 @@
         hitboxes.sort((a, b) => b.z - a.z);
     }
 
+    // Mise à jour des positions des hitbox existantes
+    function updateHitboxes() {
+        // Effacer le canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Pour chaque hitbox existante
+        for (const hitbox of hitboxes) {
+            // Récupérer les contours à partir de l'élément a-frame
+            try {
+                // Vérifier si l'élément a-frame est toujours visible
+                const isVisible = (hitbox.aframeEl as any).object3D.visible;
+                
+                if (isVisible) {
+                    // Obtenir les contours de base (stockés comme attribut de données)
+                    const contourPointsString = hitbox.aframeEl.getAttribute('data-contour');
+                    if (contourPointsString) {
+                        const contourPoints = JSON.parse(contourPointsString);
+                        
+                        // Récupérer les dimensions de l'image
+                        const imgWidth = parseFloat(hitbox.aframeEl.getAttribute('data-img-width') || '0');
+                        const imgHeight = parseFloat(hitbox.aframeEl.getAttribute('data-img-height') || '0');
+                        const ratio = parseFloat(hitbox.aframeEl.getAttribute('data-ratio') || '1');
+                        
+                        // Convertir les contours en coordonnées d'écran
+                        const screenPoints = convertContourToScreenCoordinates(
+                            contourPoints,
+                            hitbox.aframeEl,
+                            imgWidth,
+                            imgHeight,
+                            ratio
+                        );
+                        
+                        // Créer un nouveau Path2D
+                        const path = new Path2D();
+                        if (screenPoints.length > 0) {
+                            path.moveTo(screenPoints[0].x, screenPoints[0].y);
+                            for (let i = 1; i < screenPoints.length; i++) {
+                                path.lineTo(screenPoints[i].x, screenPoints[i].y);
+                            }
+                            path.closePath();
+                            
+                            // Mettre à jour le chemin de la hitbox
+                            hitbox.path = path;
+                            
+                            // Dessiner la hitbox si en mode debug
+                            if (debug) {
+                                ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+                                ctx.lineWidth = 2;
+                                ctx.stroke(path);
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error(`Error updating hitbox for ${hitbox.imageId}:`, error);
+            }
+        }
+    }
+
     // Création d'une hitbox à partir d'une image
-    async function createHitboxFromImage(image: trackAsset): Promise<{imageId: string, path: Path2D, z: number} | null> {
+    async function createHitboxFromImage(image: trackAsset): Promise<{imageId: string, path: Path2D, z: number, aframeEl: Element} | null> {
         return new Promise((resolve) => {
             const img = new Image();
             img.crossOrigin = "Anonymous"; // Important pour éviter les erreurs CORS
@@ -198,6 +259,12 @@
                             return;
                         }
                         
+                        // Stocker les contours originaux et les dimensions de l'image comme attributs de données
+                        aframeEl.setAttribute('data-contour', JSON.stringify(contourPoints));
+                        aframeEl.setAttribute('data-img-width', img.width.toString());
+                        aframeEl.setAttribute('data-img-height', img.height.toString());
+                        aframeEl.setAttribute('data-ratio', (image.ratio ?? assetRatio).toString());
+                        
                         // Convertir les points de contour aux coordonnées screen
                         const screenContourPoints = convertContourToScreenCoordinates(
                             contourPoints, 
@@ -219,7 +286,8 @@
                             resolve({
                                 imageId: image.name,
                                 path,
-                                z: image.z
+                                z: image.z,
+                                aframeEl
                             });
                         } else {
                             console.warn(`No valid screen points for ${image.name}`);
@@ -308,7 +376,8 @@
             
             // Créer un vecteur 3D temporaire pour ce point
             const worldPos = new THREE.Vector3(normalizedX, normalizedY, 0);
-            object3D.localToWorld(worldPos); // Convertir en coordonnées mondiales
+            // Important: appliquer la matrice de transformation de l'objet pour tenir compte de sa position actuelle
+            worldPos.applyMatrix4(object3D.matrixWorld);
             
             // Projeter les coordonnées 3D en coordonnées d'écran 2D
             const screenPos = worldPos.project(camera);
@@ -357,6 +426,11 @@
     }
 
     onDestroy(() => {
+        // Arrêter la boucle d'animation
+        if (animationFrameId !== null) {
+            cancelAnimationFrame(animationFrameId);
+        }
+        
         // Nettoyage
         const scene = document.querySelector('a-scene');
         if (scene) {
