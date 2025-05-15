@@ -4,6 +4,8 @@
     import 'mind-ar/dist/mindar-image-aframe.prod.js';
     let debug = false;
 
+    let paperModal;
+
     // Extension de l'interface trackAsset pour inclure les handlers de clic
     interface trackAsset {
         name: string,
@@ -114,7 +116,7 @@
         {
             name: 'girl',
             z: 0.4,
-            clickHandler: () => console.log('Girl clicked!')
+            clickHandler: () => paperModal.showModal(),
         },
         { name: 'paper_8', z: 0.4, clickHandler: () => console.log('Paper 8 clicked!') },
         { 
@@ -931,21 +933,28 @@
         <a-entity mindar-image-target="targetIndex: 0">
             <!-- Image originale -->
             {#each images as image}
-                <a-image src="{'/track_assets/'+image.name+'.png'}"
+                <a-image src="{'/track_assets/'+image.name+'.png'}" alt="frame"
                          position="{'0 0 '+image.z}"
                          height="{getAssetHeight(image.ratio ?? assetRatio)}"
                          width="{getAssetWidth(image.ratio ?? 1)}" rotation="0 0 0"
                          material="transparent: true; alphaTest: 0.5; depthTest: false; depthWrite: false; opacity: 1"
                 ></a-image>
             {/each}
-
-            <!-- Exemple de texte 3D au-dessus des images -->
-            <a-text value="AR Demo" position="0.5 0.8 0.5" color="red" width="2" align="center"></a-text>
-
-            <!-- Exemple de forme 3D (cube) sous les images -->
-            <a-box position="0.5 -0.8 0.5" width="2" height="0.2" depth="0.2" color="blue"></a-box>
         </a-entity>
     </a-scene>
+
+    <dialog id="paperModal" class="modal" bind:this={paperModal}>
+        <div class="modal-box">
+            <h3 class="text-lg font-bold">Hello!</h3>
+            <p class="py-4">Press ESC key or click the button below to close</p>
+            <div class="modal-action">
+                <form method="dialog">
+                    <!-- if there is a button in form, it will close the modal -->
+                    <button class="btn">Close</button>
+                </form>
+            </div>
+        </div>
+    </dialog>
 </main>
 
 
