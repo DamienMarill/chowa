@@ -8,6 +8,12 @@
     let scandalModal: any;
     let creditsModal: any;
     let devModal: any;
+    
+    // Variables pour l'animation SVG
+    let codeContainer: HTMLElement;
+    let svgContainer: HTMLElement;
+    let typingSpeed = 20; // en millisecondes par caractère
+    let typingTimeout: NodeJS.Timeout;
 
     let papers: Record<string, number> = {
         angular: 3,
@@ -115,7 +121,11 @@
             z: 0,
             ratio: 1.55
         },
-        { name: "pc", z: 0.2, clickHandler: () => devModal.showModal()},
+        { name: "pc", z: 0.2, clickHandler: () => {
+            devModal.showModal();
+            // Démarrer l'animation lorsque la modal s'ouvre
+            setTimeout(startSvgCodeAnimation, 300); // Petit délai pour que la modal s'ouvre d'abord
+        }},
         { name: 'bibi', z: 0.3, clickHandler: () => playAudio('cafe.mp3', {volume: 0.3}) },
         { name: 'whale', z: 0.3, clickHandler: () => playAudio('trivia.mp3')},
         { name: 'paper_2', z: 0.3, clickHandler: () => collectPaper('paper_2', 'angular')  },
@@ -146,6 +156,71 @@
         { name: 'paper_3', z: 0.6, clickHandler: () => collectPaper('paper_3', 'laravel') },
         { name: 'paper_5', z: 0.6, clickHandler: () => collectPaper('paper_5', 'laravel') },
     ];
+
+    // Code SVG de l'oiseau kawaii
+    const svgCode = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+    <!-- Corps principal -->
+    <ellipse cx="200" cy="220" rx="100" ry="80" fill="#fff4d6"/>
+    <!-- Aile -->
+    <path d="M220 200 C250 180 240 160 210 190" fill="#ffeba3" stroke="#ffeba3" stroke-width="15" stroke-linecap="round"/>
+    <!-- Petite queue -->
+    <path d="M290 200 C310 220 300 240 280 230" fill="#ffeba3"/>
+    <!-- Tête -->
+    <circle cx="140" cy="160" r="60" fill="#fff4d6"/>
+    <!-- Bec -->
+    <path d="M100 160 L80 165 L100 170 Z" fill="#ffb347"/>
+    <!-- Œil -->
+    <circle cx="120" cy="150" r="10" fill="#333"/>
+    <!-- Reflet de l'œil -->
+    <circle cx="125" cy="145" r="3" fill="white"/>
+    <!-- Joue rose -->
+    <circle cx="130" cy="165" r="10" fill="#ffcece" opacity="0.6"/>
+    <!-- Pattes -->
+    <path d="M180 290 L200 310" stroke="#ffb347" stroke-width="8" stroke-linecap="round"/>
+    <path d="M200 290 L220 310" stroke="#ffb347" stroke-width="8" stroke-linecap="round"/>
+    <!-- Petites bulles décoratives -->
+    <circle cx="90" cy="120" r="4" fill="#fff4d6"/>
+    <circle cx="100" cy="100" r="3" fill="#fff4d6"/>
+    <circle cx="80" cy="140" r="3" fill="#fff4d6"/>
+    <!-- Effet brillant -->
+    <path d="M180 100 L190 90 M185 85 L195 95" stroke="#fffae5" stroke-width="3" stroke-linecap="round"/>
+</svg>`;
+
+    // Fonction pour démarrer l'animation d'écriture
+    function startSvgCodeAnimation() {
+        // Réinitialiser le conteneur de code et SVG
+        if (codeContainer) codeContainer.textContent = '';
+        if (svgContainer) svgContainer.innerHTML = '';
+        
+        // Nettoyer tout timeout existant
+        if (typingTimeout) clearTimeout(typingTimeout);
+        
+        // Animation d'écriture caractère par caractère
+        let charIndex = 0;
+        
+        function typeNextChar() {
+            if (charIndex < svgCode.length) {
+                // Ajouter le caractère suivant
+                codeContainer.textContent += svgCode.charAt(charIndex);
+                // Faire défiler vers le bas pour rester au courant du texte
+                codeContainer.scrollTop = codeContainer.scrollHeight;
+                charIndex++;
+                // Programmer le prochain caractère
+                typingTimeout = setTimeout(typeNextChar, typingSpeed);
+            } else {
+                // Animation terminée, afficher le SVG
+                svgContainer.innerHTML = svgCode;
+                // Ajouter une classe d'animation pour faire apparaître le SVG avec un effet
+                const svgElement = svgContainer.querySelector('svg');
+                if (svgElement) {
+                    svgElement.classList.add('appear-animation');
+                }
+            }
+        }
+        
+        // Démarrer l'animation
+        typeNextChar();
+    }
 
     onMount(async () => {
         // Accéder au système renderer d'A-Frame pour modifier les paramètres de clipping
@@ -1063,8 +1138,20 @@
         </form>
     </dialog>
     <dialog id="creditsModal" class="modal" bind:this={creditsModal}>
-        <div class="modal-box flex">
-            <h2>credits</h2>
+        <div class="modal-box flex flex-col gap-4">
+            <div class="flex items-center justify-center gap-4">
+                <img src="/divers/marill.gif" class="w-24 rounded-full" alt="marill">
+                <div>
+                    <h3 class="mb-3 text-xl">Damien Marill</h3>
+                    <p><a class="link" target="_blank" href="https://marill.dev">https://marill.dev</a></p>
+                </div>
+            </div>
+            <ul>
+                <li>Chanson de <a class="link" href="https://www.instagram.com/cacophonie436/" target="_blank">Laura, aka Gwen</a></li>
+                <li>Sound Effect by <a class="link" target="_blank" href="https://pixabay.com/users/floraphonic-38928062/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=191453">floraphonic</a> from <a class="link" target="_blank" href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=191453">Pixabay</a></li>
+                <li>Co-codé avec Meika, sur <a class="link" href="https://claude.ai">Claude</a></li>
+                <li>Avec le soutien et l'encouragement <a class="link" target="_blank" href="https://www.instagram.com/anieshka__/">d'Anieshka</a></li>
+            </ul>
         </div>
         <form method="dialog" class="modal-backdrop">
             <button>close</button>
@@ -1072,8 +1159,21 @@
     </dialog>
 
     <dialog id="devModal" class="modal" bind:this={devModal}>
-        <div class="modal-box flex">
-            <h2>dev</h2>
+        <div class="modal-box flex flex-col space-y-4 max-w-3xl">
+            <h2 class="text-xl font-bold">SVG Animation Kawaii</h2>
+            
+            <!-- Conteneur pour le code et l'aperçu -->
+            <div class="flex flex-col md:flex-row gap-4">
+                <!-- Zone de code avec animation de typage -->
+                <div class="mockup-code bg-base-200 text-base-content flex-1 overflow-x-auto text-sm">
+                    <pre><code bind:this={codeContainer}></code></pre>
+                </div>
+                
+                <!-- Aperçu du SVG -->
+                <div class="flex-1 flex items-center justify-center p-4 bg-base-200 rounded-lg">
+                    <div bind:this={svgContainer} class="w-full h-full flex items-center justify-center"></div>
+                </div>
+            </div>
         </div>
         <form method="dialog" class="modal-backdrop">
             <button>close</button>
@@ -1097,5 +1197,36 @@
         position: absolute;
         top: 0;
         left: 0;
+    }
+    
+    /* Styles pour l'animation SVG */
+    @keyframes appear {
+        0% {
+            opacity: 0;
+            transform: scale(0.8);
+        }
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    :global(.appear-animation) {
+        animation: appear 0.8s cubic-bezier(0.26, 0.53, 0.74, 1.48) forwards;
+    }
+
+    /* Style spécifique pour la zone de code */
+    :global(.mockup-code pre code) {
+        white-space: pre-wrap;
+        max-height: 50vh;
+        overflow-y: auto;
+        line-height: 1.5;
+    }
+
+    /* Style pour le conteneur SVG */
+    :global(.modal-box svg) {
+        width: 100%;
+        height: auto;
+        max-height: 250px;
     }
 </style>
