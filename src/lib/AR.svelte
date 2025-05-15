@@ -116,7 +116,7 @@
             ratio: 1.55
         },
         { name: "pc", z: 0.2, clickHandler: () => devModal.showModal()},
-        { name: 'bibi', z: 0.3, clickHandler: () => playAudio('cafe.mp3') },
+        { name: 'bibi', z: 0.3, clickHandler: () => playAudio('cafe.mp3', {volume: 0.3}) },
         { name: 'whale', z: 0.3, clickHandler: () => playAudio('trivia.mp3')},
         { name: 'paper_2', z: 0.3, clickHandler: () => collectPaper('paper_2', 'angular')  },
         { name: 'paper_6', z: 0.3, clickHandler: () => collectPaper('paper_6', 'angular') },
@@ -136,7 +136,7 @@
         { name: 'book_1', z: 0.45, clickHandler: () => tookBook()},
         { name: 'book_3', z: 0.5, clickHandler: () => tookBook()},
         { name: 'mimiqui', z: 0.5, clickHandler: () => {
-            playAudio('mimiqui.mp3');
+            playAudio('mimiqui.mp3', {volume: 0.3});
         }},
 
         //paper - tu peux personnaliser les actions pour chaque papier ici
@@ -972,6 +972,22 @@
             }
             return audioInstances[id];
         }
+        
+        // Créer une nouvelle instance audio si elle n'existe pas
+        const audio = new Audio(audioPath);
+        audio.volume = volume;
+        audio.loop = loop;
+        
+        // Stocker l'instance pour une utilisation ultérieure
+        audioInstances[id] = audio;
+        
+        // Lire l'audio si autoplay est activé
+        if (autoplay) {
+            audio.play()
+                .catch(error => console.error(`Erreur lors de la lecture de l'audio ${filename}:`, error));
+        }
+        
+        return audio;
     }
 
 
@@ -1028,24 +1044,38 @@
         <div class="modal-box flex justify-center">
             <img src="{'/divers/'+selectedPaper+'.png'}" alt="paper collected">
         </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
     </dialog>
 
     <dialog id="scandalModal" class="modal" bind:this={scandalModal}>
-        <div class="modal-box flex justify-center flex-row gap-4 items-center">
-            <img src="/divers/Scandal_hello.jpg" alt="scandal collected">
-            <audio src="/divers/departure.mp3"></audio>
+        <div class="modal-box flex justify-center flex-col gap-4 items-center">
+            <img src="/divers/Scandal_hello.jpg" class="w-20 rounded" alt="scandal collected">
+            <audio controls>
+                <source src="/divers/departure.mp3" type="audio/mpeg">
+            </audio>
         </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
     </dialog>
     <dialog id="creditsModal" class="modal" bind:this={creditsModal}>
         <div class="modal-box flex">
             <h2>credits</h2>
         </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
     </dialog>
 
     <dialog id="devModal" class="modal" bind:this={devModal}>
         <div class="modal-box flex">
             <h2>dev</h2>
         </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
     </dialog>
 </main>
 
