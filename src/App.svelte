@@ -1,11 +1,8 @@
 <script lang="ts">
-
+  import AR from "./lib/AR.svelte";
 </script>
 
 <main>
-    <button class="btn btn-primary">yolo</button>
+    <AR/>
 </main>
 
-<style>
-
-</style>
