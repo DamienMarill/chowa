@@ -127,7 +127,7 @@
             z: 0.4,
             clickHandler: () => playAudio('Million-dreams.mp3'),
         },
-        { name: 'paper_8', z: 0.4, clickHandler: () => collectPaper('paper_2', 'laravel') },
+        { name: 'paper_8', z: 0.4, clickHandler: () => collectPaper('paper_8', 'laravel') },
         {
             name: 'scandal',
             z: 0.45,
@@ -142,7 +142,7 @@
         //paper - tu peux personnaliser les actions pour chaque papier ici
         { name: 'paper_1', z: 0.5, clickHandler: () => collectPaper('paper_1', 'tailwind') },
         { name: 'paper_4', z: 0.5, clickHandler: () => collectPaper('paper_4', 'tailwind')},
-        { name: 'paper_7', z: 0.5, clickHandler: () => collectPaper('paper_2', 'angular') },
+        { name: 'paper_7', z: 0.5, clickHandler: () => collectPaper('paper_7', 'angular') },
         { name: 'paper_3', z: 0.6, clickHandler: () => collectPaper('paper_3', 'laravel') },
         { name: 'paper_5', z: 0.6, clickHandler: () => collectPaper('paper_5', 'laravel') },
     ];
@@ -191,6 +191,7 @@
 
     function collectPaper(name: string, framework: string){
         let element = document.querySelector('.'+name);
+        console.log(element);
         if (element?.getAttribute('visible')){
             element?.setAttribute('visible', 'false');
             papers[framework] -= 1;
@@ -1032,6 +1033,7 @@
                 <a-image src="{'/track_assets/'+image.name+'.png'}" alt="frame"
                          visible="true"
                          position="{'0 0 '+image.z}"
+                         class="{image.name}"
                          height="{getAssetHeight(image.ratio ?? assetRatio)}"
                          width="{getAssetWidth(image.ratio ?? 1)}" rotation="0 0 0"
                          material="transparent: true; alphaTest: 0.5; depthTest: false; depthWrite: false; opacity: 1"
@@ -1051,7 +1053,7 @@
 
     <dialog id="scandalModal" class="modal" bind:this={scandalModal}>
         <div class="modal-box flex justify-center flex-col gap-4 items-center">
-            <img src="/divers/Scandal_hello.jpg" class="w-20 rounded" alt="scandal collected">
+            <img src="/divers/Scandal_hello.jpg" class="w-44 rounded" alt="scandal collected">
             <audio controls>
                 <source src="/divers/departure.mp3" type="audio/mpeg">
             </audio>
