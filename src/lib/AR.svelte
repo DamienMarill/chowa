@@ -4,7 +4,17 @@
     import 'mind-ar/dist/mindar-image-aframe.prod.js';
     let debug = false;
 
-    let paperModal;
+    let paperModal: any;
+    let scandalModal: any;
+    let creditsModal: any;
+    let devModal: any;
+
+    let papers: Record<string, number> = {
+        angular: 3,
+        laravel: 3,
+        tailwind: 2,
+    }
+    let selectedPaper!: string;
 
     // Extension de l'interface trackAsset pour inclure les handlers de clic
     interface trackAsset {
@@ -59,7 +69,7 @@
     }[] = [];
     let canvas: HTMLCanvasElement;
     let ctx: CanvasRenderingContext2D;
-    
+
     // Variables pour le système de particules
     let particles: Particle[] = [];
     let particleContainer: HTMLElement | null = null;
@@ -89,52 +99,52 @@
         '/sakuras/petal14.png',
     ];
     let lastParticleId = 0;
-    
+
     // Valeurs Z possibles pour les particules (intercalées entre les images)
     // Analyse des valeurs z existantes : 0, 0.3, 0.4, 0.5, 0.6
     // Nous créons des positions intermédiaires pour placer les particules
     let possibleZValues = [0.05, 0.15, 0.25, 0.35];
-    
+
     // Variable pour le contrôle d'animation
     let animationFrameId: number | null = null;
     let particleAnimationId: number | null = null;
 
     let images: trackAsset[] = [
-        { 
-            name: 'background', 
-            z: 0, 
-            ratio: 1.55,
-            clickHandler: () => console.log('Background clicked!')
+        {
+            name: 'background',
+            z: 0,
+            ratio: 1.55
         },
-        { name: "pc", z: 0.2},
-        { name: 'bibi', z: 0.3 },
-        { name: 'whale', z: 0.3},
-        { name: 'paper_2', z: 0.3, clickHandler: () => console.log('Paper 2 clicked!') },
-        { name: 'paper_6', z: 0.3, clickHandler: () => console.log('Paper 6 clicked!') },
-        { name: 'phone', z: 0.35},
-        { name: 'book_2', z: 0.35},
+        { name: "pc", z: 0.2, clickHandler: () => devModal.showModal()},
+        { name: 'bibi', z: 0.3, clickHandler: () => playAudio('cafe.mp3') },
+        { name: 'whale', z: 0.3, clickHandler: () => playAudio('trivia.mp3')},
+        { name: 'paper_2', z: 0.3, clickHandler: () => collectPaper('paper_2', 'angular')  },
+        { name: 'paper_6', z: 0.3, clickHandler: () => collectPaper('paper_6', 'angular') },
+        { name: 'phone', z: 0.35, clickHandler: () => creditsModal.showModal() },
+        { name: 'book_2', z: 0.35, clickHandler: () => tookBook()},
         {
             name: 'girl',
             z: 0.4,
-            clickHandler: () => paperModal.showModal(),
+            clickHandler: () => playAudio('Million-dreams.mp3'),
         },
-        { name: 'paper_8', z: 0.4, clickHandler: () => console.log('Paper 8 clicked!') },
-        { 
-            name: 'scandal', 
+        { name: 'paper_8', z: 0.4, clickHandler: () => collectPaper('paper_2', 'laravel') },
+        {
+            name: 'scandal',
             z: 0.45,
-            clickHandler: () => console.log('Scandal clicked!')
+            clickHandler: () => scandalModal.showModal(),
         },
-
-        { name: 'book_1', z: 0.45},
-        { name: 'book_3', z: 0.5},
-        { name: 'mimiqui', z: 0.5},
+        { name: 'book_1', z: 0.45, clickHandler: () => tookBook()},
+        { name: 'book_3', z: 0.5, clickHandler: () => tookBook()},
+        { name: 'mimiqui', z: 0.5, clickHandler: () => {
+            playAudio('mimiqui.mp3');
+        }},
 
         //paper - tu peux personnaliser les actions pour chaque papier ici
-        { name: 'paper_1', z: 0.5, clickHandler: () => console.log('Paper 1 clicked!') },
-        { name: 'paper_4', z: 0.5, clickHandler: () => console.log('Paper 4 clicked!') },
-        { name: 'paper_7', z: 0.5, clickHandler: () => console.log('Paper 7 clicked!') },
-        { name: 'paper_3', z: 0.6, clickHandler: () => console.log('Paper 3 clicked!') },
-        { name: 'paper_5', z: 0.6, clickHandler: () => console.log('Paper 5 clicked!') },
+        { name: 'paper_1', z: 0.5, clickHandler: () => collectPaper('paper_1', 'tailwind') },
+        { name: 'paper_4', z: 0.5, clickHandler: () => collectPaper('paper_4', 'tailwind')},
+        { name: 'paper_7', z: 0.5, clickHandler: () => collectPaper('paper_2', 'angular') },
+        { name: 'paper_3', z: 0.6, clickHandler: () => collectPaper('paper_3', 'laravel') },
+        { name: 'paper_5', z: 0.6, clickHandler: () => collectPaper('paper_5', 'laravel') },
     ];
 
     onMount(async () => {
@@ -159,7 +169,7 @@
                     // Réduire la distance minimale
                     camera.setAttribute('near', '0.01');
                 }
-                
+
                 // Initialiser le système de particules
                 initParticleSystem();
             });
@@ -167,18 +177,37 @@
 
         // Initialiser le système de détection de clics
         setupClickDetection();
-        
+
         // Générer les hitbox initiales après que les images AR sont chargées
         // Note: Nous utilisons un délai pour s'assurer que les images sont chargées
         setTimeout(async () => {
             await generateHitboxes();
             console.log('Initial hitboxes generated:', hitboxes.length);
-            
+
             // Démarrer la boucle d'animation pour mettre à jour les hitbox
             startHitboxUpdateLoop();
         }, 2000);
     });
-    
+
+    function collectPaper(name: string, framework: string){
+        let element = document.querySelector('.'+name);
+        if (element?.getAttribute('visible')){
+            element?.setAttribute('visible', 'false');
+            papers[framework] -= 1;
+            playAudio('paper.mp3');
+            if (papers[framework] === 0){
+                selectedPaper = framework;
+                paperModal.showModal();
+            }
+        }
+    }
+
+    function tookBook(){
+        let sounds = ['book1.mp3', 'book2.mp3', 'book3.mp3'];
+        let randomSound = sounds[Math.floor(Math.random() * sounds.length)];
+        playAudio(randomSound);
+    }
+
     // Initialisation du système de particules
     function initParticleSystem() {
         // Trouver le conteneur AR où placer les particules
@@ -187,41 +216,41 @@
             console.error('AR entity not found for particle system');
             return;
         }
-        
+
         // Créer un conteneur pour les particules
         particleContainer = document.createElement('a-entity');
         particleContainer.setAttribute('id', 'particle-container');
         arEntity.appendChild(particleContainer);
-        
+
         // Générer les particules initiales
         generateParticles();
-        
+
         // Démarrer l'animation des particules
         startParticleAnimation();
     }
-    
+
     // Sélectionner aléatoirement une image de pétale
     function getRandomSakuraImage(): string {
         const randomIndex = Math.floor(Math.random() * sakuraImages.length);
         return sakuraImages[randomIndex];
     }
-    
+
     // Création d'une particule
     function createParticle(): Particle {
         lastParticleId++;
-        
+
         // Position aléatoire sur l'axe X (désormais légèrement plus à gauche pour laisser de la marge pour la dérive)
         const x = (Math.random() * 2 - 1.5) * 1.2; // Plus vers la gauche pour qu'elles dérivent vers la droite
-        
+
         // Position Y au-dessus de la scène
         const y = 1.2 + Math.random() * 0.5; // 1.2 à 1.7
-        
+
         // Profondeur Z aléatoire parmi les valeurs possibles
         const z = possibleZValues[Math.floor(Math.random() * possibleZValues.length)];
-        
+
         // Sélectionner aléatoirement une image de pétale
         const image = getRandomSakuraImage();
-        
+
         // Créer l'objet particule
         const particle: Particle = {
             id: lastParticleId,
@@ -243,7 +272,7 @@
             element: null,
             image: image
         };
-        
+
         // Créer l'élément A-Frame correspondant
         if (particleContainer) {
             const el = document.createElement('a-plane');
@@ -255,19 +284,19 @@
             el.setAttribute('position', `${particle.x} ${particle.y} ${particle.z}`);
             el.setAttribute('rotation', `${particle.rotationX} ${particle.rotationY} ${particle.rotationZ}`);
             el.setAttribute('material', 'transparent: true; alphaTest: 0.5; depthTest: true; depthWrite: false;');
-            
+
             particleContainer.appendChild(el);
             particle.element = el;
         }
-        
+
         return particle;
     }
-    
+
     // Génération des particules initiales
     function generateParticles() {
         // Vider le tableau des particules
         particles = [];
-        
+
         // Créer les nouvelles particules
         for (let i = 0; i < particleCount; i++) {
             // Répartir la position Y initiale pour éviter que toutes les particules apparaissent en même temps
@@ -276,33 +305,33 @@
             particles.push(particle);
         }
     }
-    
+
     // Animation des particules
     function updateParticles(deltaTime: number) {
         for (let i = 0; i < particles.length; i++) {
             const particle = particles[i];
-            
+
             // Mettre à jour la position Y (chute)
             particle.y -= particle.speedY * deltaTime;
-            
+
             // Mettre à jour la position X (dérive horizontale vers la droite)
             particle.x += particle.speedX * deltaTime;
-            
+
             // Oscillation latérale (effet de flottement plus subtil)
             const swayX = Math.sin((Date.now() * 0.001 * particle.swayFrequency) + particle.swayOffset) * particle.swayAmplitude * deltaTime;
             particle.x += swayX;
-            
+
             // Rotation
             particle.rotationX += particle.speedRotationX * deltaTime;
             particle.rotationY += particle.speedRotationY * deltaTime;
             particle.rotationZ += particle.speedRotationZ * deltaTime;
-            
+
             // Vérifier si la particule est sortie de la scène (par le bas ou la droite)
             if (particle.y < -1.5 || particle.x > 1.5) {
                 // Réinitialiser la particule en haut et à gauche
                 particle.y = 1.2 + Math.random() * 0.5;
                 particle.x = -1.5 + Math.random() * -0.5; // Réapparaît à gauche
-                
+
                 // Changer de type de pétale lors du recyclage pour plus de variété
                 if (particle.element) {
                     const newImage = getRandomSakuraImage();
@@ -310,7 +339,7 @@
                     particle.element.setAttribute('src', newImage);
                 }
             }
-            
+
             // Mettre à jour l'élément A-Frame
             if (particle.element) {
                 particle.element.setAttribute('position', `${particle.x} ${particle.y} ${particle.z}`);
@@ -318,21 +347,21 @@
             }
         }
     }
-    
+
     // Démarrer l'animation des particules
     function startParticleAnimation() {
         let lastTime = performance.now();
-        
+
         const animateParticles = () => {
             const currentTime = performance.now();
             const deltaTime = currentTime - lastTime;
             lastTime = currentTime;
-            
+
             updateParticles(deltaTime);
-            
+
             particleAnimationId = requestAnimationFrame(animateParticles);
         };
-        
+
         particleAnimationId = requestAnimationFrame(animateParticles);
     }
 
@@ -348,15 +377,15 @@
         canvas.style.pointerEvents = 'none';
         canvas.style.zIndex = '999';
         document.body.appendChild(canvas);
-        
+
         ctx = canvas.getContext('2d')!;
-        
+
         // Ajouter un gestionnaire de clic sur la scène
         const scene = document.querySelector('a-scene');
         if (scene) {
             scene.addEventListener('click', handleSceneClick);
         }
-        
+
         // Gérer le redimensionnement de la fenêtre
         window.addEventListener('resize', () => {
             canvas.width = window.innerWidth;
@@ -372,11 +401,11 @@
         const updateLoop = () => {
             // Mettre à jour les positions des hitbox
             updateHitboxes();
-            
+
             // Continuer la boucle
             animationFrameId = requestAnimationFrame(updateLoop);
         };
-        
+
         // Démarrer la boucle
         animationFrameId = requestAnimationFrame(updateLoop);
     }
@@ -384,14 +413,14 @@
     // Génération initiale des hitbox à partir des images
     async function generateHitboxes() {
         hitboxes = []; // Réinitialiser les hitbox existantes
-        
+
         for (const image of images) {
             const hitbox = await createHitboxFromImage(image);
             if (hitbox) {
                 hitboxes.push(hitbox);
             }
         }
-        
+
         // Trier les hitbox par profondeur (z) pour la détection correcte
         // Plus le z est grand, plus l'image est au premier plan
         hitboxes.sort((a, b) => b.z - a.z);
@@ -401,25 +430,25 @@
     function updateHitboxes() {
         // Effacer le canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
+
         // Pour chaque hitbox existante
         for (const hitbox of hitboxes) {
             // Récupérer les contours à partir de l'élément a-frame
             try {
                 // Vérifier si l'élément a-frame est toujours visible
                 const isVisible = (hitbox.aframeEl as any).object3D.visible;
-                
+
                 if (isVisible) {
                     // Obtenir les contours de base (stockés comme attribut de données)
                     const contourPointsString = hitbox.aframeEl.getAttribute('data-contour');
                     if (contourPointsString) {
                         const contourPoints = JSON.parse(contourPointsString);
-                        
+
                         // Récupérer les dimensions de l'image
                         const imgWidth = parseFloat(hitbox.aframeEl.getAttribute('data-img-width') || '0');
                         const imgHeight = parseFloat(hitbox.aframeEl.getAttribute('data-img-height') || '0');
                         const ratio = parseFloat(hitbox.aframeEl.getAttribute('data-ratio') || '1');
-                        
+
                         // Convertir les contours en coordonnées d'écran
                         const screenPoints = convertContourToScreenCoordinates(
                             contourPoints,
@@ -428,7 +457,7 @@
                             imgHeight,
                             ratio
                         );
-                        
+
                         // Créer un nouveau Path2D
                         const path = new Path2D();
                         if (screenPoints.length > 0) {
@@ -437,10 +466,10 @@
                                 path.lineTo(screenPoints[i].x, screenPoints[i].y);
                             }
                             path.closePath();
-                            
+
                             // Mettre à jour le chemin de la hitbox
                             hitbox.path = path;
-                            
+
                             // Dessiner la hitbox si en mode debug
                             if (debug) {
                                 ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
@@ -461,24 +490,24 @@
         return new Promise((resolve) => {
             const img = new Image();
             img.crossOrigin = "Anonymous"; // Important pour éviter les erreurs CORS
-            
+
             img.onload = () => {
                 // Créer un canvas temporaire pour analyser l'image
                 const tempCanvas = document.createElement('canvas');
                 tempCanvas.width = img.width;
                 tempCanvas.height = img.height;
                 const tempCtx = tempCanvas.getContext('2d')!;
-                
+
                 // Dessiner l'image sur le canvas
                 tempCtx.drawImage(img, 0, 0);
-                
+
                 try {
                     // Obtenir les données de l'image
                     const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
-                    
+
                     // Détecter les contours
                     const contourPoints = detectContour(imageData);
-                    
+
                     if (contourPoints.length > 0) {
                         // Obtenir la position et les dimensions de l'élément A-Frame
                         const aframeEl = document.querySelector(`a-image[src="/track_assets/${image.name}.png"]`);
@@ -487,22 +516,22 @@
                             resolve(null);
                             return;
                         }
-                        
+
                         // Stocker les contours originaux et les dimensions de l'image comme attributs de données
                         aframeEl.setAttribute('data-contour', JSON.stringify(contourPoints));
                         aframeEl.setAttribute('data-img-width', img.width.toString());
                         aframeEl.setAttribute('data-img-height', img.height.toString());
                         aframeEl.setAttribute('data-ratio', (image.ratio ?? assetRatio).toString());
-                        
+
                         // Convertir les points de contour aux coordonnées screen
                         const screenContourPoints = convertContourToScreenCoordinates(
-                            contourPoints, 
-                            aframeEl, 
-                            img.width, 
+                            contourPoints,
+                            aframeEl,
+                            img.width,
                             img.height,
                             image.ratio ?? assetRatio
                         );
-                        
+
                         // Créer le Path2D pour la hitbox
                         const path = new Path2D();
                         if (screenContourPoints.length > 0) {
@@ -511,7 +540,7 @@
                                 path.lineTo(screenContourPoints[i].x, screenContourPoints[i].y);
                             }
                             path.closePath();
-                            
+
                             resolve({
                                 imageId: image.name,
                                 path,
@@ -531,12 +560,12 @@
                     resolve(null);
                 }
             };
-            
+
             img.onerror = () => {
                 console.error(`Failed to load image: ${image.name}`);
                 resolve(null);
             };
-            
+
             img.src = `/track_assets/${image.name}.png`;
         });
     }
@@ -546,12 +575,12 @@
         const width = imageData.width;
         const height = imageData.height;
         const data = imageData.data;
-        
+
         // Paramètres pour un contour plus précis
         const step = 5; // Distance entre les points échantillonnés (plus petit = plus précis mais plus lourd)
         const outlinePoints: {x: number, y: number}[] = [];
         const threshold = 127; // Seuil pour considérer un pixel comme non transparent
-        
+
         // 1. Trouver les contours par balayage en croix depuis le centre
         const directions = [
             { dx: 1, dy: 0 },   // droite
@@ -563,21 +592,21 @@
             { dx: -1, dy: -1 }, // diagonale haut-gauche
             { dx: 1, dy: -1 }   // diagonale haut-droite
         ];
-        
+
         // 2. Trouver le centre de l'image approximativement
         let centerX = Math.floor(width / 2);
         let centerY = Math.floor(height / 2);
-        
+
         // Ajuster le centre si besoin pour être sur un pixel non transparent
         let found = false;
         const radius = Math.min(width, height) / 4;
-        
+
         // Chercher autour du centre un pixel non transparent
         for (let r = 0; r < radius && !found; r++) {
             for (let angle = 0; angle < Math.PI * 2 && !found; angle += Math.PI / 8) {
                 const testX = Math.floor(centerX + r * Math.cos(angle));
                 const testY = Math.floor(centerY + r * Math.sin(angle));
-                
+
                 if (testX >= 0 && testX < width && testY >= 0 && testY < height) {
                     const idx = (testY * width + testX) * 4;
                     if (data[idx + 3] > threshold) {
@@ -588,20 +617,20 @@
                 }
             }
         }
-        
+
         // Si on n'a pas trouvé de pixel non transparent, retourner un rectangle englobant de base
         if (!found) {
             let minX = width;
             let minY = height;
             let maxX = 0;
             let maxY = 0;
-            
+
             // Chercher les limites des pixels non transparents
             for (let y = 0; y < height; y += step) {
                 for (let x = 0; x < width; x += step) {
                     const idx = (y * width + x) * 4;
                     const alpha = data[idx + 3];
-                    
+
                     if (alpha > threshold) {
                         minX = Math.min(minX, x);
                         minY = Math.min(minY, y);
@@ -610,7 +639,7 @@
                     }
                 }
             }
-            
+
             // Si nous avons trouvé des pixels non transparents
             if (minX <= maxX && minY <= maxY) {
                 // Créer un rectangle qui englobe la partie visible
@@ -621,24 +650,24 @@
                     {x: minX, y: maxY}
                 ];
             }
-            
+
             return [];
         }
-        
+
         // 3. Pour chaque direction, lancer des rayons depuis le centre
         const numRays = 36; // Nombre de rayons à lancer (plus = plus précis)
-        
+
         for (let angle = 0; angle < 2 * Math.PI; angle += (2 * Math.PI) / numRays) {
             let x = centerX;
             let y = centerY;
             let lastOpaque = true;
-            
+
             // Étendre le rayon jusqu'à atteindre la bordure ou un pixel transparent
             const maxDistance = Math.max(width, height);
             for (let dist = 0; dist < maxDistance; dist++) {
                 x = Math.floor(centerX + Math.cos(angle) * dist);
                 y = Math.floor(centerY + Math.sin(angle) * dist);
-                
+
                 // Vérifier les limites
                 if (x < 0 || x >= width || y < 0 || y >= height) {
                     // Ajouter le dernier point avant de sortir des limites
@@ -647,20 +676,20 @@
                     }
                     break;
                 }
-                
+
                 const idx = (y * width + x) * 4;
                 const isOpaque = data[idx + 3] > threshold;
-                
+
                 // Si on passe de opaque à transparent, on a trouvé un point de contour
                 if (lastOpaque && !isOpaque) {
                     outlinePoints.push({x, y});
                     break;
                 }
-                
+
                 lastOpaque = isOpaque;
             }
         }
-        
+
         // 4. Parcourir les bordures pour ajouter des points supplémentaires
         // Bordure supérieure
         for (let x = 0; x < width; x += step) {
@@ -672,7 +701,7 @@
                 }
             }
         }
-        
+
         // Bordure inférieure
         for (let x = 0; x < width; x += step) {
             for (let y = height - 1; y >= 0; y -= 1) {
@@ -683,7 +712,7 @@
                 }
             }
         }
-        
+
         // Bordure gauche
         for (let y = 0; y < height; y += step) {
             for (let x = 0; x < width; x += 1) {
@@ -694,7 +723,7 @@
                 }
             }
         }
-        
+
         // Bordure droite
         for (let y = 0; y < height; y += step) {
             for (let x = width - 1; x >= 0; x -= 1) {
@@ -705,21 +734,21 @@
                 }
             }
         }
-        
+
         // 5. Si trop peu de points, revenir à un rectangle englobant
         if (outlinePoints.length < 6) {
             let minX = width;
             let minY = height;
             let maxX = 0;
             let maxY = 0;
-            
+
             for (const point of outlinePoints) {
                 minX = Math.min(minX, point.x);
                 minY = Math.min(minY, point.y);
                 maxX = Math.max(maxX, point.x);
                 maxY = Math.max(maxY, point.y);
             }
-            
+
             return [
                 {x: minX, y: minY},
                 {x: maxX, y: minY},
@@ -727,16 +756,16 @@
                 {x: minX, y: maxY}
             ];
         }
-        
+
         // 6. Trier les points dans le sens horaire pour créer un polygone fermé
         const sortedPoints = sortPointsClockwise(outlinePoints, centerX, centerY);
-        
+
         // 7. Simplifier le polygone avec l'algorithme de Douglas-Peucker
         const simplifiedPoints = simplifyPolygon(sortedPoints, 5.0); // Tolérance pour la simplification
-        
+
         return simplifiedPoints;
     }
-    
+
     // Fonction pour trier les points dans le sens horaire
     function sortPointsClockwise(points: {x: number, y: number}[], centerX: number, centerY: number): {x: number, y: number}[] {
         return [...points].sort((a, b) => {
@@ -745,24 +774,24 @@
             return angleA - angleB;
         });
     }
-    
+
     // Algorithme de simplification de Douglas-Peucker pour réduire le nombre de points
     function simplifyPolygon(points: {x: number, y: number}[], tolerance: number): {x: number, y: number}[] {
         if (points.length <= 2) return points;
-        
+
         // Fonction pour calculer la distance d'un point à une ligne
         function perpendicularDistance(point: {x: number, y: number}, lineStart: {x: number, y: number}, lineEnd: {x: number, y: number}): number {
             const dx = lineEnd.x - lineStart.x;
             const dy = lineEnd.y - lineStart.y;
-            
+
             // Si la ligne est un point, retourner la distance euclidienne au point
             if (dx === 0 && dy === 0) {
                 return Math.sqrt((point.x - lineStart.x) ** 2 + (point.y - lineStart.y) ** 2);
             }
-            
+
             // Distance normalisée le long de la ligne
             const t = ((point.x - lineStart.x) * dx + (point.y - lineStart.y) * dy) / (dx * dx + dy * dy);
-            
+
             if (t < 0) {
                 // Point est avant le début de la ligne
                 return Math.sqrt((point.x - lineStart.x) ** 2 + (point.y - lineStart.y) ** 2);
@@ -771,24 +800,24 @@
                 // Point est après la fin de la ligne
                 return Math.sqrt((point.x - lineEnd.x) ** 2 + (point.y - lineEnd.y) ** 2);
             }
-            
+
             // Point projette sur la ligne
             const projX = lineStart.x + t * dx;
             const projY = lineStart.y + t * dy;
-            
+
             return Math.sqrt((point.x - projX) ** 2 + (point.y - projY) ** 2);
         }
-        
+
         // Implémenter l'algorithme de Douglas-Peucker récursivement
         function douglasPeucker(pts: {x: number, y: number}[], startIndex: number, endIndex: number, tolerance: number): {x: number, y: number}[] {
             if (endIndex <= startIndex + 1) {
                 return [pts[startIndex]];
             }
-            
+
             // Trouver le point avec la plus grande distance
             let maxDistance = 0;
             let maxIndex = 0;
-            
+
             for (let i = startIndex + 1; i < endIndex; i++) {
                 const distance = perpendicularDistance(pts[i], pts[startIndex], pts[endIndex]);
                 if (distance > maxDistance) {
@@ -796,30 +825,30 @@
                     maxIndex = i;
                 }
             }
-            
+
             // Si la distance max est supérieure à la tolérance, diviser et simplifier
             let result: {x: number, y: number}[] = [];
             if (maxDistance > tolerance) {
                 const left = douglasPeucker(pts, startIndex, maxIndex, tolerance);
                 const right = douglasPeucker(pts, maxIndex, endIndex, tolerance);
-                
+
                 result = [...left, ...right];
             } else {
                 result = [pts[startIndex], pts[endIndex]];
             }
-            
+
             return result;
         }
-        
+
         // Appliquer l'algorithme au polygone
         const result = douglasPeucker(points, 0, points.length - 1, tolerance);
-        
+
         // Assurons-nous que le dernier point est inclus si nécessaire
-        if (result[result.length - 1].x !== points[points.length - 1].x || 
+        if (result[result.length - 1].x !== points[points.length - 1].x ||
             result[result.length - 1].y !== points[points.length - 1].y) {
             result.push(points[points.length - 1]);
         }
-        
+
         return result;
     }
 
@@ -832,33 +861,33 @@
         ratio: number
     ): {x: number, y: number}[] {
         const screenPoints: {x: number, y: number}[] = [];
-        
+
         // Obtenir les coordonnées 3D de l'élément A-Frame
         const object3D = (aframeEl as any).object3D;
         const camera = document.querySelector('a-camera')!.object3D.children[0] as THREE.Camera;
         const scene = document.querySelector('a-scene')!.object3D;
-        
+
         // Pour chaque point du contour
         for (const point of contourPoints) {
             // Convertir les coordonnées du point de l'image (en pixels) en coordonnées normalisées (-0.5 à 0.5)
             const normalizedX = (point.x / imgWidth - 0.5) * getAssetWidth(ratio);
             const normalizedY = (0.5 - point.y / imgHeight) * getAssetHeight(ratio);
-            
+
             // Créer un vecteur 3D temporaire pour ce point
             const worldPos = new THREE.Vector3(normalizedX, normalizedY, 0);
             // Important: appliquer la matrice de transformation de l'objet pour tenir compte de sa position actuelle
             worldPos.applyMatrix4(object3D.matrixWorld);
-            
+
             // Projeter les coordonnées 3D en coordonnées d'écran 2D
             const screenPos = worldPos.project(camera);
-            
+
             // Convertir les coordonnées normalisées (-1 à 1) en pixels
             const screenX = (screenPos.x + 1) / 2 * canvas.width;
             const screenY = (-screenPos.y + 1) / 2 * canvas.height;
-            
+
             screenPoints.push({x: screenX, y: screenY});
         }
-        
+
         return screenPoints;
     }
 
@@ -867,7 +896,7 @@
         // Coordonnées du clic
         const x = event.clientX;
         const y = event.clientY;
-        
+
         // Vérifier quelle hitbox a été cliquée (en commençant par celle au premier plan)
         for (const hitbox of hitboxes) {
             if (ctx.isPointInPath(hitbox.path, x, y)) {
@@ -876,7 +905,7 @@
                 if (clickedImage && clickedImage.clickHandler) {
                     clickedImage.clickHandler();
                     console.log(`Clicked on ${hitbox.imageId} at depth ${hitbox.z}`);
-                    
+
                     // En mode debug, mettre en évidence la hitbox cliquée
                     if (debug) {
                         const originalStrokeStyle = ctx.strokeStyle;
@@ -895,25 +924,76 @@
         }
     }
 
-    onDestroy(() => {
+
+    /**
+     * Gestionnaire audio pour les applications AR
+     * Permet de charger, jouer, mettre en pause et arrêter des fichiers audio
+     */
+
+// Stockage des instances audio actives pour pouvoir les gérer
+    const audioInstances: { [key: string]: HTMLAudioElement } = {};
+
+    /**
+     * Joue un fichier audio depuis le dossier public/divers
+     * @param filename - Nom du fichier audio (avec son extension)
+     * @param options - Options de lecture (volume, loop, autoplay, id)
+     * @returns L'élément audio créé ou existant
+     */
+    function playAudio(
+        filename: string,
+        options: {
+            volume?: number;     // Volume (0.0 à 1.0)
+            loop?: boolean;      // Répéter la lecture en boucle
+            autoplay?: boolean;  // Lecture automatique
+            id?: string;         // Identifiant unique (utilise le nom du fichier par défaut)
+        } = {}
+    ): HTMLAudioElement {
+        // Options par défaut
+        const {
+            volume = 1.0,
+            loop = false,
+            autoplay = true,
+            id = filename
+        } = options;
+
+        // Chemin complet vers le fichier audio
+        const audioPath = `/divers/${filename}`;
+
+        // Vérifier si une instance avec cet ID existe déjà
+        if (audioInstances[id]) {
+            // Si l'instance existe déjà et que autoplay est true, on la joue
+            if (autoplay) {
+                // Réinitialiser le temps de lecture si le son est déjà terminé
+                if (audioInstances[id].ended) {
+                    audioInstances[id].currentTime = 0;
+                }
+                audioInstances[id].play()
+                    .catch(error => console.error(`Erreur lors de la lecture de l'audio ${filename}:`, error));
+            }
+            return audioInstances[id];
+        }
+    }
+
+
+        onDestroy(() => {
         // Arrêter la boucle d'animation des hitbox
         if (animationFrameId !== null) {
             cancelAnimationFrame(animationFrameId);
         }
-        
+
         // Arrêter la boucle d'animation des particules
         if (particleAnimationId !== null) {
             cancelAnimationFrame(particleAnimationId);
         }
-        
+
         // Nettoyage
         const scene = document.querySelector('a-scene');
         if (scene) {
             scene.removeEventListener('click', handleSceneClick);
         }
-        
+
         window.removeEventListener('resize', () => {});
-        
+
         if (canvas && canvas.parentNode) {
             canvas.parentNode.removeChild(canvas);
         }
@@ -928,12 +1008,13 @@
                 <img id="sakura-{index+1}" src="{image}" />
             {/each}
         </a-assets>
-        
+
         <a-camera position="0 0 0" look-controls="enabled: false" near="0.01" far="10000"></a-camera>
         <a-entity mindar-image-target="targetIndex: 0">
             <!-- Image originale -->
             {#each images as image}
                 <a-image src="{'/track_assets/'+image.name+'.png'}" alt="frame"
+                         visible="true"
                          position="{'0 0 '+image.z}"
                          height="{getAssetHeight(image.ratio ?? assetRatio)}"
                          width="{getAssetWidth(image.ratio ?? 1)}" rotation="0 0 0"
@@ -944,15 +1025,26 @@
     </a-scene>
 
     <dialog id="paperModal" class="modal" bind:this={paperModal}>
-        <div class="modal-box">
-            <h3 class="text-lg font-bold">Hello!</h3>
-            <p class="py-4">Press ESC key or click the button below to close</p>
-            <div class="modal-action">
-                <form method="dialog">
-                    <!-- if there is a button in form, it will close the modal -->
-                    <button class="btn">Close</button>
-                </form>
-            </div>
+        <div class="modal-box flex justify-center">
+            <img src="{'/divers/'+selectedPaper+'.png'}" alt="paper collected">
+        </div>
+    </dialog>
+
+    <dialog id="scandalModal" class="modal" bind:this={scandalModal}>
+        <div class="modal-box flex justify-center flex-row gap-4 items-center">
+            <img src="/divers/Scandal_hello.jpg" alt="scandal collected">
+            <audio src="/divers/departure.mp3"></audio>
+        </div>
+    </dialog>
+    <dialog id="creditsModal" class="modal" bind:this={creditsModal}>
+        <div class="modal-box flex">
+            <h2>credits</h2>
+        </div>
+    </dialog>
+
+    <dialog id="devModal" class="modal" bind:this={devModal}>
+        <div class="modal-box flex">
+            <h2>dev</h2>
         </div>
     </dialog>
 </main>
