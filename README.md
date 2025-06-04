@@ -6,7 +6,7 @@
 
 Chowa est une petite application de réalité augmentée construite avec Svelte, Vite, Tailwind et A-Frame. Elle permet d'afficher des scènes AR légères où des pétales de sakura tombent doucement au fil de la collection d'éléments.
 
-![Capture](public/sakura.png)
+![Capture](public/track_assets/girl.png)
 
 ## ✨ Fonctionnalités
 
