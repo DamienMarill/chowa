@@ -2,6 +2,7 @@
     import { onMount, onDestroy } from 'svelte';
     import 'aframe';
     import 'mind-ar/dist/mindar-image-aframe.prod.js';
+    import { sortPointsClockwise, simplifyPolygon } from './geometry';
     let debug = false;
 
     let paperModal: any;
@@ -847,91 +848,6 @@
         return simplifiedPoints;
     }
 
-    // Fonction pour trier les points dans le sens horaire
-    function sortPointsClockwise(points: {x: number, y: number}[], centerX: number, centerY: number): {x: number, y: number}[] {
-        return [...points].sort((a, b) => {
-            const angleA = Math.atan2(a.y - centerY, a.x - centerX);
-            const angleB = Math.atan2(b.y - centerY, b.x - centerX);
-            return angleA - angleB;
-        });
-    }
-
-    // Algorithme de simplification de Douglas-Peucker pour réduire le nombre de points
-    function simplifyPolygon(points: {x: number, y: number}[], tolerance: number): {x: number, y: number}[] {
-        if (points.length <= 2) return points;
-
-        // Fonction pour calculer la distance d'un point à une ligne
-        function perpendicularDistance(point: {x: number, y: number}, lineStart: {x: number, y: number}, lineEnd: {x: number, y: number}): number {
-            const dx = lineEnd.x - lineStart.x;
-            const dy = lineEnd.y - lineStart.y;
-
-            // Si la ligne est un point, retourner la distance euclidienne au point
-            if (dx === 0 && dy === 0) {
-                return Math.sqrt((point.x - lineStart.x) ** 2 + (point.y - lineStart.y) ** 2);
-            }
-
-            // Distance normalisée le long de la ligne
-            const t = ((point.x - lineStart.x) * dx + (point.y - lineStart.y) * dy) / (dx * dx + dy * dy);
-
-            if (t < 0) {
-                // Point est avant le début de la ligne
-                return Math.sqrt((point.x - lineStart.x) ** 2 + (point.y - lineStart.y) ** 2);
-            }
-            if (t > 1) {
-                // Point est après la fin de la ligne
-                return Math.sqrt((point.x - lineEnd.x) ** 2 + (point.y - lineEnd.y) ** 2);
-            }
-
-            // Point projette sur la ligne
-            const projX = lineStart.x + t * dx;
-            const projY = lineStart.y + t * dy;
-
-            return Math.sqrt((point.x - projX) ** 2 + (point.y - projY) ** 2);
-        }
-
-        // Implémenter l'algorithme de Douglas-Peucker récursivement
-        function douglasPeucker(pts: {x: number, y: number}[], startIndex: number, endIndex: number, tolerance: number): {x: number, y: number}[] {
-            if (endIndex <= startIndex + 1) {
-                return [pts[startIndex]];
-            }
-
-            // Trouver le point avec la plus grande distance
-            let maxDistance = 0;
-            let maxIndex = 0;
-
-            for (let i = startIndex + 1; i < endIndex; i++) {
-                const distance = perpendicularDistance(pts[i], pts[startIndex], pts[endIndex]);
-                if (distance > maxDistance) {
-                    maxDistance = distance;
-                    maxIndex = i;
-                }
-            }
-
-            // Si la distance max est supérieure à la tolérance, diviser et simplifier
-            let result: {x: number, y: number}[] = [];
-            if (maxDistance > tolerance) {
-                const left = douglasPeucker(pts, startIndex, maxIndex, tolerance);
-                const right = douglasPeucker(pts, maxIndex, endIndex, tolerance);
-
-                result = [...left, ...right];
-            } else {
-                result = [pts[startIndex], pts[endIndex]];
-            }
-
-            return result;
-        }
-
-        // Appliquer l'algorithme au polygone
-        const result = douglasPeucker(points, 0, points.length - 1, tolerance);
-
-        // Assurons-nous que le dernier point est inclus si nécessaire
-        if (result[result.length - 1].x !== points[points.length - 1].x ||
-            result[result.length - 1].y !== points[points.length - 1].y) {
-            result.push(points[points.length - 1]);
-        }
-
-        return result;
-    }
 
     // Convertir les coordonnées de contour de l'image aux coordonnées d'écran
     function convertContourToScreenCoordinates(
