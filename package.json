@@ -24,5 +24,6 @@
   "dependencies": {
     "aframe": "^1.7.1",
     "mind-ar": "^1.2.5"
-  }
+  },
+  "license": "MIT"
 }
