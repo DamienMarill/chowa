@@ -263,7 +263,9 @@
         // Note: Nous utilisons un délai pour s'assurer que les images sont chargées
         setTimeout(async () => {
             await generateHitboxes();
-            console.log('Initial hitboxes generated:', hitboxes.length);
+            if (debug) {
+                console.log('Initial hitboxes generated:', hitboxes.length);
+            }
 
             // Démarrer la boucle d'animation pour mettre à jour les hitbox
             startHitboxUpdateLoop();
@@ -272,7 +274,9 @@
 
     function collectPaper(name: string, framework: string){
         let element = document.querySelector('.'+name);
-        console.log(element);
+        if (debug) {
+            console.log(element);
+        }
         if (element?.getAttribute('visible')){
             element?.setAttribute('visible', 'false');
             papers[framework] -= 1;
@@ -981,7 +985,9 @@
                 const clickedImage = images.find(img => img.name === hitbox.imageId);
                 if (clickedImage && clickedImage.clickHandler) {
                     clickedImage.clickHandler();
-                    console.log(`Clicked on ${hitbox.imageId} at depth ${hitbox.z}`);
+                    if (debug) {
+                        console.log(`Clicked on ${hitbox.imageId} at depth ${hitbox.z}`);
+                    }
 
                     // En mode debug, mettre en évidence la hitbox cliquée
                     if (debug) {
