@@ -76,6 +76,13 @@
     let canvas: HTMLCanvasElement;
     let ctx: CanvasRenderingContext2D;
 
+    const resizeHandler = () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        // Forcer une mise à jour des hitbox au redimensionnement
+        updateHitboxes();
+    };
+
     // Variables pour le système de particules
     let particles: Particle[] = [];
     let particleContainer: HTMLElement | null = null;
@@ -463,12 +470,7 @@
         }
 
         // Gérer le redimensionnement de la fenêtre
-        window.addEventListener('resize', () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            // Forcer une mise à jour des hitbox au redimensionnement
-            updateHitboxes();
-        });
+        window.addEventListener('resize', resizeHandler);
     }
 
     // Boucle d'animation pour mettre à jour en continu les hitbox
@@ -1084,7 +1086,7 @@
             scene.removeEventListener('click', handleSceneClick);
         }
 
-        window.removeEventListener('resize', () => {});
+        window.removeEventListener('resize', resizeHandler);
 
         if (canvas && canvas.parentNode) {
             canvas.parentNode.removeChild(canvas);
