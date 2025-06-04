@@ -79,7 +79,6 @@
     const resizeHandler = () => {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
-        // Forcer une mise à jour des hitbox au redimensionnement
         updateHitboxes();
     };
 
