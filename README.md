@@ -40,6 +40,13 @@ pnpm run build
 ```
 Les fichiers générés se trouvent dans `dist/`.
 
+### Tests
+
+```bash
+pnpm run test
+```
+Lance les tests unitaires avec Vitest.
+
 ## Diagramme
 
 ```mermaid
