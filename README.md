@@ -1,3 +1,115 @@
+# Chōwa - Web AR Application
+
+Chōwa is an augmented reality application built with Svelte, A-Frame, and AR.js. It uses image tracking (NFT - Natural Feature Tracking) to detect a specific image marker and overlay a 3D model in the camera view.
+
+## AR Functionality
+
+The application utilizes AR.js for its Natural Feature Tracking capabilities. When the camera is activated and pointed at the correct target image (defined by the descriptor files in `public/`), a 3D model is rendered on top of it.
+
+The target image marker is configured via `public/chowa.iset` and associated files. The 3D model displayed is intended to be referenced in `src/lib/ARView.svelte` (currently, there's a placeholder/potential typo for the model path).
+
+## Technologies Used
+
+- **Svelte:** A reactive JavaScript framework for building user interfaces.
+- **Vite:** A fast build tool and development server.
+- **TypeScript:** For static typing and improved code quality.
+- **A-Frame:** A web framework for building virtual reality (VR) and augmented reality (AR) experiences.
+- **AR.js:** An open-source library for AR on the web, specifically used here for image tracking.
+- **TailwindCSS:** A utility-first CSS framework.
+- **DaisyUI:** A component library for TailwindCSS.
+
+## Getting Started
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) (LTS version recommended)
+- [pnpm](https://pnpm.io/) (packet manager)
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone <repository-url>
+   cd <repository-directory>
+   ```
+2. Install the dependencies:
+   ```bash
+   pnpm install
+   ```
+
+### Running the Development Server
+
+To start the development server:
+```bash
+pnpm dev
+```
+The application will typically be available at `https://localhost:5173/`.
+Note: This project uses `vite-plugin-mkcert` to automatically generate SSL certificates for local development, as HTTPS is required for camera access in modern browsers. You might need to trust the generated certificate in your browser the first time you run it.
+
+### Building for Production
+
+To create a production build:
+```bash
+pnpm build
+```
+The output files will be in the `dist/` directory.
+
+### Previewing the Production Build
+
+To preview the production build locally:
+```bash
+pnpm preview
+```
+This will serve the `dist/` directory.
+
+## How to Use
+
+1.  **Start the application:** Follow the instructions in the "Getting Started" section to run the development server (`pnpm dev`).
+2.  **Open the application in your browser:** Navigate to the provided local URL (usually `https://localhost:5173/`).
+3.  **Welcome Screen:** You will see the Chōwa welcome screen with a title and a button "Activer la caméra" (Activate camera).
+4.  **Activate Camera:** Click the "Activer la caméra" button. Your browser will likely ask for permission to access your webcam. Grant permission.
+5.  **AR Experience:**
+    *   Once the camera feed is active, point your device's camera at the target image marker.
+    *   The target image is defined by the NFT descriptor located at `public/chowa.iset` (and its associated `.fset3` file). You will need to have a physical or digital version of this marker image. (Note: The actual image `chowa.png` in the `public` directory is likely the intended visual marker).
+    *   When the marker is detected, the 3D model configured in the application should appear overlaid on or near the marker in your camera view.
+6.  **Exit AR View:** To return to the welcome screen, click the "Quitter" (Exit) button, which is usually displayed overlaying the camera view.
+
+## Project Structure
+
+Here's an overview of the key files and directories in the Chōwa project:
+
+```
+.
+├── public/               # Static assets accessible from the web root
+│   ├── chowa.iset        # AR.js NFT marker descriptor file
+│   ├── chowa.fset3       # AR.js NFT marker feature set file (binary)
+│   └── chowa.png         # Likely the visual image marker corresponding to the .iset descriptor
+├── src/                  # Application source code
+│   ├── assets/           # Static assets like images, fonts (if any, currently svelte.svg)
+│   ├── lib/              # Library components
+│   │   └── ARView.svelte # Svelte component for the A-Frame AR scene
+│   ├── App.svelte        # Main Svelte application component (handles view switching)
+│   ├── app.css           # Global styles for the application
+│   └── main.ts           # Main TypeScript entry point, initializes the Svelte app
+├── index.html            # HTML entry point, loads A-Frame and AR.js scripts
+├── package.json          # Project metadata, dependencies, and scripts
+├── svelte.config.js      # Svelte compiler configuration
+├── tsconfig.json         # TypeScript compiler configuration
+├── vite.config.ts        # Vite build tool configuration
+└── README.md             # This documentation file
+```
+
+-   **`public/`**: Contains static assets.
+    -   `chowa.iset`, `chowa.fset3`: These are the AR.js Natural Feature Tracking (NFT) marker files. `chowa.iset` is the descriptor and `chowa.fset3` contains the feature set.
+    -   `chowa.png`: This is likely the actual image that the AR system will look for. You need to display this image (e.g., on a screen or printout) and point your device's camera at it.
+-   **`src/`**: Contains all the Svelte application code.
+    -   `App.svelte`: The root Svelte component. It manages the display of either the welcome page or the AR camera view.
+    -   `lib/ARView.svelte`: This component sets up and manages the A-Frame scene required for the augmented reality experience. It defines the AR marker to track and the 3D content to display.
+    -   `main.ts`: The entry point of the application. It instantiates the main Svelte component (`App.svelte`) and mounts it to the DOM.
+-   **`index.html`**: The main HTML page that gets served to the browser. It includes necessary script tags for A-Frame and AR.js and provides the root element for the Svelte application.
+-   **`vite.config.ts`**: Configuration file for Vite, the build tool used by the project. It includes settings for the development server, build process, and plugins (like the Svelte plugin and mkcert for HTTPS).
+-   **`package.json`**: Standard Node.js manifest file that lists project dependencies, scripts (for building, developing, etc.), and other metadata.
+
 # Svelte + TS + Vite
 
 This template should help get you started developing with Svelte and TypeScript in Vite.
