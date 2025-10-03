@@ -14,6 +14,7 @@
     const NUM_RAYS = 36; // Nombre de rayons pour détection contour
     const ASSET_RATIO_DEFAULT = 1;
     const A4_RATIO = 21 / 29.7;
+    const CAMERA_MOVE_THRESHOLD = 0.001; // Seuil de mouvement caméra pour update hitbox
 
     let debug = DEBUG;
 
@@ -93,8 +94,9 @@
         updateHitboxes();
     };
 
-    // Variables pour le système de particules
+    // Variables pour le système de particules avec pooling
     let particles: Particle[] = [];
+    let particlePool: Particle[] = []; // Pool de particules réutilisables
     let particleContainer: HTMLElement | null = null;
     // Liste des différentes images de pétales disponibles
     let sakuraImages = [
@@ -130,6 +132,14 @@
     // Variable pour le contrôle d'animation
     let animationFrameId: number | null = null;
     let particleAnimationId: number | null = null;
+
+    // Variables pour throttling hitbox
+    let lastCameraPosition = { x: 0, y: 0, z: 0 };
+    let lastCameraRotation = { x: 0, y: 0, z: 0 };
+
+    // Objets réutilisables pour éviter allocations dans tick()
+    const tempVector3 = typeof THREE !== 'undefined' ? new THREE.Vector3() : null;
+    const screenPointsCache: {x: number, y: number}[] = [];
 
     let images: TrackAsset[] = [
         {
@@ -332,75 +342,95 @@
     }
 
     /**
-     * Crée une particule de sakura avec propriétés physiques aléatoires
-     * @returns Nouvelle particule avec élément A-Frame associé
+     * Acquiert une particule du pool ou en crée une nouvelle
+     * @returns Particule réinitialisée avec nouvelles propriétés physiques
      */
-    function createParticle(): Particle {
-        lastParticleId++;
+    function acquireParticle(): Particle {
+        let particle = particlePool.pop();
 
-        // Position aléatoire sur l'axe X (désormais légèrement plus à gauche pour laisser de la marge pour la dérive)
-        const x = (Math.random() * 2 - 1.5) * 1.2; // Plus vers la gauche pour qu'elles dérivent vers la droite
+        if (!particle) {
+            // Créer une nouvelle particule si le pool est vide
+            lastParticleId++;
+            const image = getRandomSakuraImage();
 
-        // Position Y au-dessus de la scène
-        const y = 1.2 + Math.random() * 0.5; // 1.2 à 1.7
+            particle = {
+                id: lastParticleId,
+                x: 0,
+                y: 0,
+                z: 0,
+                rotationX: 0,
+                rotationY: 0,
+                rotationZ: 0,
+                scale: 0,
+                speedY: 0,
+                speedX: 0,
+                speedRotationX: 0,
+                speedRotationY: 0,
+                speedRotationZ: 0,
+                swayFrequency: 0,
+                swayAmplitude: 0,
+                swayOffset: 0,
+                element: null,
+                image: image
+            };
 
-        // Profondeur Z aléatoire parmi les valeurs possibles
-        const z = possibleZValues[Math.floor(Math.random() * possibleZValues.length)];
+            // Créer l'élément A-Frame une seule fois
+            if (particleContainer) {
+                const el = document.createElement('a-plane');
+                el.setAttribute('id', `particle-${particle.id}`);
+                el.setAttribute('src', particle.image);
+                el.setAttribute('width', '1');
+                el.setAttribute('height', '1');
+                el.setAttribute('material', 'transparent: true; alphaTest: 0.5; depthTest: true; depthWrite: false;');
+                particleContainer.appendChild(el);
+                particle.element = el;
+            }
+        }
 
-        // Sélectionner aléatoirement une image de pétale
-        const image = getRandomSakuraImage();
+        // Réinitialiser les propriétés physiques
+        particle.x = (Math.random() * 2 - 1.5) * 1.2;
+        particle.y = 1.2 + Math.random() * 0.5;
+        particle.z = possibleZValues[Math.floor(Math.random() * possibleZValues.length)];
+        particle.rotationX = Math.random() * 360;
+        particle.rotationY = Math.random() * 360;
+        particle.rotationZ = Math.random() * 360;
+        particle.scale = 0.01 + Math.random() * 0.09;
+        particle.speedY = 0.0005 + Math.random() * 0.0008;
+        particle.speedX = 0.0002 + Math.random() * 0.0003;
+        particle.speedRotationX = (Math.random() - 0.5) * 0.2;
+        particle.speedRotationY = (Math.random() - 0.5) * 0.2;
+        particle.speedRotationZ = (Math.random() - 0.5) * 0.2;
+        particle.swayFrequency = 0.2 + Math.random() * 0.4;
+        particle.swayAmplitude = 0.0005 + Math.random() * 0.001;
+        particle.swayOffset = Math.random() * Math.PI * 2;
 
-        // Créer l'objet particule
-        const particle: Particle = {
-            id: lastParticleId,
-            x,
-            y,
-            z,
-            rotationX: Math.random() * 360,
-            rotationY: Math.random() * 360,
-            rotationZ: Math.random() * 360,
-            scale: 0.01 + Math.random() * 0.09, // Taille aléatoire entre 0.05 et 0.2
-            speedY: 0.0005 + Math.random() * 0.0008, // Vitesse de chute TRÈS réduite (environ 6x plus lent)
-            speedX: 0.0002 + Math.random() * 0.0003, // Vitesse horizontale (dérive vers la droite)
-            speedRotationX: (Math.random() - 0.5) * 0.2, // Vitesse de rotation X (plus lente)
-            speedRotationY: (Math.random() - 0.5) * 0.2, // Vitesse de rotation Y (plus lente)
-            speedRotationZ: (Math.random() - 0.5) * 0.2, // Vitesse de rotation Z (plus lente)
-            swayFrequency: 0.2 + Math.random() * 0.4, // Fréquence de l'oscillation (plus lente)
-            swayAmplitude: 0.0005 + Math.random() * 0.001, // Amplitude de l'oscillation (plus légère)
-            swayOffset: Math.random() * Math.PI * 2, // Décalage pour varier le mouvement
-            element: null,
-            image: image
-        };
-
-        // Créer l'élément A-Frame correspondant
-        if (particleContainer) {
-            const el = document.createElement('a-plane');
-            el.setAttribute('id', `particle-${particle.id}`);
-            el.setAttribute('src', particle.image);
-            el.setAttribute('width', '1');
-            el.setAttribute('height', '1');
-            el.setAttribute('scale', `${particle.scale} ${particle.scale} ${particle.scale}`);
-            el.setAttribute('position', `${particle.x} ${particle.y} ${particle.z}`);
-            el.setAttribute('rotation', `${particle.rotationX} ${particle.rotationY} ${particle.rotationZ}`);
-            el.setAttribute('material', 'transparent: true; alphaTest: 0.5; depthTest: true; depthWrite: false;');
-
-            particleContainer.appendChild(el);
-            particle.element = el;
+        // Mettre à jour l'élément visuel
+        if (particle.element) {
+            particle.element.setAttribute('scale', `${particle.scale} ${particle.scale} ${particle.scale}`);
+            particle.element.setAttribute('position', `${particle.x} ${particle.y} ${particle.z}`);
+            particle.element.setAttribute('rotation', `${particle.rotationX} ${particle.rotationY} ${particle.rotationZ}`);
         }
 
         return particle;
     }
 
-    // Génération des particules initiales
+    /**
+     * Libère une particule vers le pool pour réutilisation
+     * @param particle - Particule à recycler
+     */
+    function releaseParticle(particle: Particle): void {
+        particlePool.push(particle);
+    }
+
+    /**
+     * Génère les particules initiales en utilisant le pool
+     */
     function generateParticles() {
-        // Vider le tableau des particules
         particles = [];
 
-        // Créer les nouvelles particules
         for (let i = 0; i < PARTICLE_COUNT; i++) {
-            // Répartir la position Y initiale pour éviter que toutes les particules apparaissent en même temps
-            const particle = createParticle();
-            particle.y = -1 + Math.random() * 3; // Répartir sur toute la hauteur de la scène
+            const particle = acquireParticle();
+            particle.y = -1 + Math.random() * 3; // Répartir sur toute la hauteur
             particles.push(particle);
         }
     }
@@ -427,15 +457,16 @@
 
             // Vérifier si la particule est sortie de la scène (par le bas ou la droite)
             if (particle.y < -1.5 || particle.x > 1.5) {
-                // Réinitialiser la particule en haut et à gauche
-                particle.y = 1.2 + Math.random() * 0.5;
-                particle.x = -1.5 + Math.random() * -0.5; // Réapparaît à gauche
+                // Recycler la particule via le pool
+                releaseParticle(particle);
+                const newParticle = acquireParticle();
+                particles[i] = newParticle;
 
-                // Changer de type de pétale lors du recyclage pour plus de variété
-                if (particle.element) {
+                // Changer de type de pétale pour variété
+                if (newParticle.element) {
                     const newImage = getRandomSakuraImage();
-                    particle.image = newImage;
-                    particle.element.setAttribute('src', newImage);
+                    newParticle.image = newImage;
+                    newParticle.element.setAttribute('src', newImage);
                 }
             }
 
@@ -489,18 +520,37 @@
         window.addEventListener('resize', resizeHandler);
     }
 
-    // Boucle d'animation pour mettre à jour en continu les hitbox
+    /**
+     * Boucle d'animation optimisée avec throttling basé sur le mouvement de la caméra
+     * Ne met à jour les hitbox que si la caméra a bougé significativement
+     */
     function startHitboxUpdateLoop() {
-        // Fonction pour la mise à jour des hitbox à chaque frame
         const updateLoop = () => {
-            // Mettre à jour les positions des hitbox
-            updateHitboxes();
+            const camera = document.querySelector('a-camera');
 
-            // Continuer la boucle
+            if (camera) {
+                const cameraObj = (camera as any).object3D;
+                const pos = cameraObj.position;
+                const rot = cameraObj.rotation;
+
+                // Calculer la distance de mouvement
+                const dx = pos.x - lastCameraPosition.x;
+                const dy = pos.y - lastCameraPosition.y;
+                const dz = pos.z - lastCameraPosition.z;
+                const dr = Math.abs(rot.y - lastCameraRotation.y); // Rotation Y principalement
+
+                const moved = Math.sqrt(dx * dx + dy * dy + dz * dz) > CAMERA_MOVE_THRESHOLD || dr > 0.01;
+
+                if (moved) {
+                    updateHitboxes();
+                    lastCameraPosition = { x: pos.x, y: pos.y, z: pos.z };
+                    lastCameraRotation = { x: rot.x, y: rot.y, z: rot.z };
+                }
+            }
+
             animationFrameId = requestAnimationFrame(updateLoop);
         };
 
-        // Démarrer la boucle
         animationFrameId = requestAnimationFrame(updateLoop);
     }
 
@@ -869,6 +919,7 @@
     /**
      * Convertit les coordonnées du contour de l'image vers les coordonnées d'écran 2D
      * en utilisant la projection 3D → 2D de la caméra A-Frame
+     * Optimisé avec réutilisation d'objets Vector3 pour éviter allocations
      * @param contourPoints - Points du contour en coordonnées image (pixels)
      * @param aframeEl - Élément A-Frame contenant l'objet 3D
      * @param imgWidth - Largeur de l'image source en pixels
@@ -883,35 +934,35 @@
         imgHeight: number,
         ratio: number
     ): {x: number, y: number}[] {
-        const screenPoints: {x: number, y: number}[] = [];
+        // Réinitialiser le cache au lieu de créer un nouveau tableau
+        screenPointsCache.length = 0;
 
-        // Obtenir les coordonnées 3D de l'élément A-Frame
         const object3D = (aframeEl as any).object3D;
         const camera = document.querySelector('a-camera')!.object3D.children[0] as THREE.Camera;
-        const scene = document.querySelector('a-scene')!.object3D;
 
-        // Pour chaque point du contour
-        for (const point of contourPoints) {
-            // Convertir les coordonnées du point de l'image (en pixels) en coordonnées normalisées (-0.5 à 0.5)
-            const normalizedX = (point.x / imgWidth - 0.5) * getAssetWidth(ratio);
-            const normalizedY = (0.5 - point.y / imgHeight) * getAssetHeight(ratio);
+        // Réutiliser le même Vector3 pour tous les points
+        if (tempVector3) {
+            for (const point of contourPoints) {
+                const normalizedX = (point.x / imgWidth - 0.5) * getAssetWidth(ratio);
+                const normalizedY = (0.5 - point.y / imgHeight) * getAssetHeight(ratio);
 
-            // Créer un vecteur 3D temporaire pour ce point
-            const worldPos = new THREE.Vector3(normalizedX, normalizedY, 0);
-            // Important: appliquer la matrice de transformation de l'objet pour tenir compte de sa position actuelle
-            worldPos.applyMatrix4(object3D.matrixWorld);
+                // Réutiliser tempVector3 au lieu de créer un nouveau Vector3
+                tempVector3.set(normalizedX, normalizedY, 0);
+                tempVector3.applyMatrix4(object3D.matrixWorld);
 
-            // Projeter les coordonnées 3D en coordonnées d'écran 2D
-            const screenPos = worldPos.project(camera);
+                // Projeter en 2D
+                const screenPos = tempVector3.project(camera);
 
-            // Convertir les coordonnées normalisées (-1 à 1) en pixels
-            const screenX = (screenPos.x + 1) / 2 * canvas.width;
-            const screenY = (-screenPos.y + 1) / 2 * canvas.height;
+                // Convertir en pixels
+                const screenX = (screenPos.x + 1) / 2 * canvas.width;
+                const screenY = (-screenPos.y + 1) / 2 * canvas.height;
 
-            screenPoints.push({x: screenX, y: screenY});
+                screenPointsCache.push({x: screenX, y: screenY});
+            }
         }
 
-        return screenPoints;
+        // Retourner une copie pour éviter mutations externes
+        return [...screenPointsCache];
     }
 
     // Gestionnaire de clic sur la scène
@@ -1061,6 +1112,7 @@
                          height="{getAssetHeight(image.ratio ?? assetRatio)}"
                          width="{getAssetWidth(image.ratio ?? 1)}" rotation="0 0 0"
                          material="transparent: true; alphaTest: 0.5; depthTest: false; depthWrite: false; opacity: 1"
+                         loading="lazy"
                 ></a-image>
             {/each}
         </a-entity>
