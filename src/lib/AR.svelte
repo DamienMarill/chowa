@@ -3,17 +3,28 @@
     import 'aframe';
     import 'mind-ar/dist/mindar-image-aframe.prod.js';
     import { sortPointsClockwise, simplifyPolygon } from './geometry';
-    let debug = false;
 
-    let paperModal: any;
-    let scandalModal: any;
-    let creditsModal: any;
-    let devModal: any;
+    // Configuration et constantes
+    const DEBUG = false;
+    const TYPING_SPEED = 20; // millisecondes par caractère
+    const PARTICLE_COUNT = 50;
+    const ALPHA_THRESHOLD = 127; // Seuil pour pixels non transparents
+    const CONTOUR_STEP = 5; // Distance entre points échantillonnés
+    const SIMPLIFY_TOLERANCE = 5.0; // Tolérance Douglas-Peucker
+    const NUM_RAYS = 36; // Nombre de rayons pour détection contour
+    const ASSET_RATIO_DEFAULT = 1;
+    const A4_RATIO = 21 / 29.7;
+
+    let debug = DEBUG;
+
+    let paperModal: HTMLDialogElement;
+    let scandalModal: HTMLDialogElement;
+    let creditsModal: HTMLDialogElement;
+    let devModal: HTMLDialogElement;
     
     // Variables pour l'animation SVG
     let codeContainer: HTMLElement;
     let svgContainer: HTMLElement;
-    let typingSpeed = 20; // en millisecondes par caractère
     let typingTimeout: NodeJS.Timeout;
 
     let papers: Record<string, number> = {
@@ -24,11 +35,11 @@
     let selectedPaper!: string;
 
     // Extension de l'interface trackAsset pour inclure les handlers de clic
-    interface trackAsset {
-        name: string,
-        z: number,
-        ratio?: number,
-        clickHandler?: () => void
+    interface TrackAsset {
+        name: string;
+        z: number;
+        ratio?: number;
+        clickHandler?: () => void;
     }
 
     // Interface pour les particules
@@ -53,18 +64,17 @@
         image: string; // Pour stocker le chemin de l'image utilisée
     }
 
-    let assetRatio = 1;
+    let assetRatio = ASSET_RATIO_DEFAULT;
 
     function getAssetWidth(ratio: number){
         return ratio;
     }
 
     function getAssetHeight(ratio: number){
-        return (21/29.7)*ratio;
+        return A4_RATIO * ratio;
     }
 
     // Variables pour stocker les références aux objets AR
-    let mindarThree: any;
     let container: HTMLElement;
 
     // Variables pour la gestion des hitbox
@@ -86,7 +96,6 @@
     // Variables pour le système de particules
     let particles: Particle[] = [];
     let particleContainer: HTMLElement | null = null;
-    let particleCount = 50; // Nombre de pétales de sakura
     // Liste des différentes images de pétales disponibles
     let sakuraImages = [
         '/sakuras/sakura1.png',
@@ -122,7 +131,7 @@
     let animationFrameId: number | null = null;
     let particleAnimationId: number | null = null;
 
-    let images: trackAsset[] = [
+    let images: TrackAsset[] = [
         {
             name: 'background',
             z: 0,
@@ -213,7 +222,7 @@
                 codeContainer.scrollTop = codeContainer.scrollHeight;
                 charIndex++;
                 // Programmer le prochain caractère
-                typingTimeout = setTimeout(typeNextChar, typingSpeed);
+                typingTimeout = setTimeout(typeNextChar, TYPING_SPEED);
             } else {
                 // Animation terminée, afficher le SVG
                 svgContainer.innerHTML = svgCode;
@@ -322,7 +331,10 @@
         return sakuraImages[randomIndex];
     }
 
-    // Création d'une particule
+    /**
+     * Crée une particule de sakura avec propriétés physiques aléatoires
+     * @returns Nouvelle particule avec élément A-Frame associé
+     */
     function createParticle(): Particle {
         lastParticleId++;
 
@@ -385,7 +397,7 @@
         particles = [];
 
         // Créer les nouvelles particules
-        for (let i = 0; i < particleCount; i++) {
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
             // Répartir la position Y initiale pour éviter que toutes les particules apparaissent en même temps
             const particle = createParticle();
             particle.y = -1 + Math.random() * 3; // Répartir sur toute la hauteur de la scène
@@ -567,8 +579,12 @@
         }
     }
 
-    // Création d'une hitbox à partir d'une image
-    async function createHitboxFromImage(image: trackAsset): Promise<{imageId: string, path: Path2D, z: number, aframeEl: Element} | null> {
+    /**
+     * Crée une hitbox interactive à partir d'une image en détectant ses contours
+     * @param image - Asset à transformer en hitbox cliquable
+     * @returns Hitbox avec son chemin 2D, profondeur z et référence A-Frame, ou null si erreur
+     */
+    async function createHitboxFromImage(image: TrackAsset): Promise<{imageId: string, path: Path2D, z: number, aframeEl: Element} | null> {
         return new Promise((resolve) => {
             const img = new Image();
             img.crossOrigin = "Anonymous"; // Important pour éviter les erreurs CORS
@@ -652,16 +668,19 @@
         });
     }
 
-    // Fonction de détection de contour améliorée
+    /**
+     * Détecte le contour d'une image en utilisant ray casting et border scanning
+     * @param imageData - Données de l'image à analyser
+     * @returns Points du contour simplifiés avec Douglas-Peucker
+     * @complexity O(n × m) où n = largeur, m = hauteur de l'image
+     */
     function detectContour(imageData: ImageData): {x: number, y: number}[] {
         const width = imageData.width;
         const height = imageData.height;
         const data = imageData.data;
 
         // Paramètres pour un contour plus précis
-        const step = 5; // Distance entre les points échantillonnés (plus petit = plus précis mais plus lourd)
         const outlinePoints: {x: number, y: number}[] = [];
-        const threshold = 127; // Seuil pour considérer un pixel comme non transparent
 
         // 1. Trouver les contours par balayage en croix depuis le centre
         const directions = [
@@ -691,7 +710,7 @@
 
                 if (testX >= 0 && testX < width && testY >= 0 && testY < height) {
                     const idx = (testY * width + testX) * 4;
-                    if (data[idx + 3] > threshold) {
+                    if (data[idx + 3] > ALPHA_THRESHOLD) {
                         centerX = testX;
                         centerY = testY;
                         found = true;
@@ -708,12 +727,12 @@
             let maxY = 0;
 
             // Chercher les limites des pixels non transparents
-            for (let y = 0; y < height; y += step) {
-                for (let x = 0; x < width; x += step) {
+            for (let y = 0; y < height; y += CONTOUR_STEP) {
+                for (let x = 0; x < width; x += CONTOUR_STEP) {
                     const idx = (y * width + x) * 4;
                     const alpha = data[idx + 3];
 
-                    if (alpha > threshold) {
+                    if (alpha > ALPHA_THRESHOLD) {
                         minX = Math.min(minX, x);
                         minY = Math.min(minY, y);
                         maxX = Math.max(maxX, x);
@@ -737,9 +756,7 @@
         }
 
         // 3. Pour chaque direction, lancer des rayons depuis le centre
-        const numRays = 36; // Nombre de rayons à lancer (plus = plus précis)
-
-        for (let angle = 0; angle < 2 * Math.PI; angle += (2 * Math.PI) / numRays) {
+        for (let angle = 0; angle < 2 * Math.PI; angle += (2 * Math.PI) / NUM_RAYS) {
             let x = centerX;
             let y = centerY;
             let lastOpaque = true;
@@ -760,7 +777,7 @@
                 }
 
                 const idx = (y * width + x) * 4;
-                const isOpaque = data[idx + 3] > threshold;
+                const isOpaque = data[idx + 3] > ALPHA_THRESHOLD;
 
                 // Si on passe de opaque à transparent, on a trouvé un point de contour
                 if (lastOpaque && !isOpaque) {
@@ -774,10 +791,10 @@
 
         // 4. Parcourir les bordures pour ajouter des points supplémentaires
         // Bordure supérieure
-        for (let x = 0; x < width; x += step) {
+        for (let x = 0; x < width; x += CONTOUR_STEP) {
             for (let y = 0; y < height; y += 1) {
                 const idx = (y * width + x) * 4;
-                if (data[idx + 3] > threshold) {
+                if (data[idx + 3] > ALPHA_THRESHOLD) {
                     outlinePoints.push({x, y});
                     break;
                 }
@@ -785,10 +802,10 @@
         }
 
         // Bordure inférieure
-        for (let x = 0; x < width; x += step) {
+        for (let x = 0; x < width; x += CONTOUR_STEP) {
             for (let y = height - 1; y >= 0; y -= 1) {
                 const idx = (y * width + x) * 4;
-                if (data[idx + 3] > threshold) {
+                if (data[idx + 3] > ALPHA_THRESHOLD) {
                     outlinePoints.push({x, y});
                     break;
                 }
@@ -796,10 +813,10 @@
         }
 
         // Bordure gauche
-        for (let y = 0; y < height; y += step) {
+        for (let y = 0; y < height; y += CONTOUR_STEP) {
             for (let x = 0; x < width; x += 1) {
                 const idx = (y * width + x) * 4;
-                if (data[idx + 3] > threshold) {
+                if (data[idx + 3] > ALPHA_THRESHOLD) {
                     outlinePoints.push({x, y});
                     break;
                 }
@@ -807,10 +824,10 @@
         }
 
         // Bordure droite
-        for (let y = 0; y < height; y += step) {
+        for (let y = 0; y < height; y += CONTOUR_STEP) {
             for (let x = width - 1; x >= 0; x -= 1) {
                 const idx = (y * width + x) * 4;
-                if (data[idx + 3] > threshold) {
+                if (data[idx + 3] > ALPHA_THRESHOLD) {
                     outlinePoints.push({x, y});
                     break;
                 }
@@ -843,13 +860,22 @@
         const sortedPoints = sortPointsClockwise(outlinePoints, centerX, centerY);
 
         // 7. Simplifier le polygone avec l'algorithme de Douglas-Peucker
-        const simplifiedPoints = simplifyPolygon(sortedPoints, 5.0); // Tolérance pour la simplification
+        const simplifiedPoints = simplifyPolygon(sortedPoints, SIMPLIFY_TOLERANCE);
 
         return simplifiedPoints;
     }
 
 
-    // Convertir les coordonnées de contour de l'image aux coordonnées d'écran
+    /**
+     * Convertit les coordonnées du contour de l'image vers les coordonnées d'écran 2D
+     * en utilisant la projection 3D → 2D de la caméra A-Frame
+     * @param contourPoints - Points du contour en coordonnées image (pixels)
+     * @param aframeEl - Élément A-Frame contenant l'objet 3D
+     * @param imgWidth - Largeur de l'image source en pixels
+     * @param imgHeight - Hauteur de l'image source en pixels
+     * @param ratio - Ratio d'affichage de l'asset AR
+     * @returns Points du contour en coordonnées écran (pixels)
+     */
     function convertContourToScreenCoordinates(
         contourPoints: {x: number, y: number}[],
         aframeEl: Element,
@@ -924,18 +950,18 @@
     }
 
 
-    /**
-     * Gestionnaire audio pour les applications AR
-     * Permet de charger, jouer, mettre en pause et arrêter des fichiers audio
-     */
-
-// Stockage des instances audio actives pour pouvoir les gérer
+    // Stockage des instances audio actives pour pouvoir les gérer
     const audioInstances: { [key: string]: HTMLAudioElement } = {};
 
     /**
      * Joue un fichier audio depuis le dossier public/divers
+     * Gère le pooling d'instances pour éviter les créations multiples
      * @param filename - Nom du fichier audio (avec son extension)
      * @param options - Options de lecture (volume, loop, autoplay, id)
+     * @param options.volume - Volume de 0.0 à 1.0 (défaut: 1.0)
+     * @param options.loop - Répéter en boucle (défaut: false)
+     * @param options.autoplay - Lecture automatique (défaut: true)
+     * @param options.id - Identifiant unique (défaut: filename)
      * @returns L'élément audio créé ou existant
      */
     function playAudio(
@@ -1020,7 +1046,7 @@
         <a-assets>
             <!-- Précharger les images de sakura -->
             {#each sakuraImages as image, index}
-                <img id="sakura-{index+1}" src="{image}" />
+                <img id="sakura-{index+1}" src="{image}" alt="Sakura petal texture {index + 1}" />
             {/each}
         </a-assets>
 

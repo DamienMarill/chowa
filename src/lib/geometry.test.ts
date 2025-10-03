@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { sortPointsClockwise, simplifyPolygon, Point } from './geometry'
+import { sortPointsClockwise, simplifyPolygon, type Point } from './geometry'
 
 describe('sortPointsClockwise', () => {
   it('should sort points around center clockwise', () => {
