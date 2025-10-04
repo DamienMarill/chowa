@@ -145,14 +145,6 @@
     let animationFrameId = $state(null as number | null);
     let particleAnimationId = $state(null as number | null);
 
-<<<<<<< HEAD
-    // Variables pour throttling hitbox
-    let lastCameraPosition = $state({ x: 0, y: 0, z: 0 });
-    let lastCameraRotation = $state({ x: 0, y: 0, z: 0 });
-=======
-
->>>>>>> fix/click
-
     // Objets réutilisables pour éviter allocations dans tick()
     const tempVector3 = typeof THREE !== 'undefined' ? new THREE.Vector3() : null;
     const screenPointsCache: {x: number, y: number}[] = [];
@@ -430,34 +422,6 @@
         window.addEventListener('resize', resizeHandler);
     }
 
-<<<<<<< HEAD
-    function startHitboxUpdateLoop() {
-        let cameraCache: AFrameElement | null = null;
-        
-        const updateLoop = () => {
-            // Cache de la caméra pour éviter querySelector répété
-            if (!cameraCache) {
-                cameraCache = document.querySelector('a-camera') as AFrameElement;
-            }
-
-            if (cameraCache) {
-                const cameraObj = cameraCache.object3D;
-                const pos = cameraObj.position;
-                const rot = cameraObj.rotation;
-                const dx = pos.x - lastCameraPosition.x;
-                const dy = pos.y - lastCameraPosition.y;
-                const dz = pos.z - lastCameraPosition.z;
-                const dr = Math.abs(rot.y - lastCameraRotation.y);
-                const moved = Math.sqrt(dx * dx + dy * dy + dz * dz) > CAMERA_CONFIG.MOVE_THRESHOLD || dr > 0.01;
-                if (moved) {
-                    updateHitboxes();
-                    lastCameraPosition = { x: pos.x, y: pos.y, z: pos.z };
-                    lastCameraRotation = { x: rot.x, y: rot.y, z: rot.z };
-                }
-            }
-            animationFrameId = requestAnimationFrame(updateLoop);
-        };
-=======
     // Boucle d'animation pour mettre à jour en continu les hitbox
     function startHitboxUpdateLoop() {
         // Fonction pour la mise à jour des hitbox à chaque frame
@@ -470,7 +434,6 @@
         };
 
         // Démarrer la boucle
->>>>>>> fix/click
         animationFrameId = requestAnimationFrame(updateLoop);
     }
 
