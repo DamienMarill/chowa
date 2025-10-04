@@ -20,7 +20,8 @@
       "mcp__serena__list_memories",
       "mcp__serena__read_memory",
       "Bash(cloc:*)",
-      "mcp__serena__search_for_pattern"
+      "mcp__serena__search_for_pattern",
+      "mcp__serena__find_file"
     ],
     "deny": [],
     "ask": []
