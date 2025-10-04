@@ -533,7 +533,7 @@
             const camera = document.querySelector('a-camera');
 
             if (camera) {
-                const cameraObj = (camera as any).object3D;
+                const cameraObj = (camera as AFrameElement).object3D;
                 const pos = cameraObj.position;
                 const rot = cameraObj.rotation;
 
@@ -586,7 +586,7 @@
             // Récupérer les contours à partir de l'élément a-frame
             try {
                 // Vérifier si l'élément a-frame est toujours visible
-                const isVisible = (hitbox.aframeEl as any).object3D.visible;
+                const isVisible = (hitbox.aframeEl as AFrameElement).object3D.visible;
 
                 if (isVisible) {
                     // Obtenir les contours de base (stockés comme attribut de données)
@@ -945,11 +945,11 @@
         // Réinitialiser le cache au lieu de créer un nouveau tableau
         screenPointsCache.length = 0;
 
-        const object3D = (aframeEl as any).object3D;
+        const object3D = (aframeEl as AFrameElement).object3D;
         const cameraEl = document.querySelector('a-camera');
         if (!cameraEl) return [];
 
-        const camera = (cameraEl as any).object3D.children[0] as THREE.Camera;
+        const camera = (cameraEl as AFrameElement).object3D.children[0] as unknown as THREE.Camera;
 
         // Réutiliser le même Vector3 pour tous les points
         for (const point of contourPoints) {
