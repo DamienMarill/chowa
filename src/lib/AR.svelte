@@ -16,24 +16,24 @@
     const A4_RATIO = 21 / 29.7;
     const CAMERA_MOVE_THRESHOLD = 0.001; // Seuil de mouvement caméra pour update hitbox
 
-    let debug = DEBUG;
+    let debug = $state(DEBUG);
 
-    let paperModal: HTMLDialogElement;
-    let scandalModal: HTMLDialogElement;
-    let creditsModal: HTMLDialogElement;
-    let devModal: HTMLDialogElement;
-    
+    let paperModal = $state(undefined as HTMLDialogElement | undefined);
+    let scandalModal = $state(undefined as HTMLDialogElement | undefined);
+    let creditsModal = $state(undefined as HTMLDialogElement | undefined);
+    let devModal = $state(undefined as HTMLDialogElement | undefined);
+
     // Variables pour l'animation SVG
-    let codeContainer: HTMLElement;
-    let svgContainer: HTMLElement;
-    let typingTimeout: NodeJS.Timeout;
+    let codeContainer = $state(undefined as HTMLElement | undefined);
+    let svgContainer = $state(undefined as HTMLElement | undefined);
+    let typingTimeout = $state(undefined as NodeJS.Timeout | undefined);
 
-    let papers: Record<string, number> = {
+    let papers = $state({
         angular: 3,
         laravel: 3,
         tailwind: 2,
-    }
-    let selectedPaper!: string;
+    } as Record<string, number>);
+    let selectedPaper = $state('');
 
     // Extension de l'interface trackAsset pour inclure les handlers de clic
     interface TrackAsset {
@@ -65,7 +65,7 @@
         image: string; // Pour stocker le chemin de l'image utilisée
     }
 
-    let assetRatio = ASSET_RATIO_DEFAULT;
+    let assetRatio = $state(ASSET_RATIO_DEFAULT);
 
     function getAssetWidth(ratio: number){
         return ratio;
@@ -76,28 +76,30 @@
     }
 
     // Variables pour stocker les références aux objets AR
-    let container: HTMLElement;
+    let container = $state(undefined as HTMLElement | undefined);
 
     // Variables pour la gestion des hitbox
-    let hitboxes: {
+    let hitboxes = $state([] as {
         imageId: string;
         path: Path2D;
         z: number;
-        aframeEl: Element; // Stocke la référence à l'élément a-frame pour la mise à jour
-    }[] = [];
-    let canvas: HTMLCanvasElement;
-    let ctx: CanvasRenderingContext2D;
+        aframeEl: Element;
+    }[]);
+    let canvas = $state(undefined as HTMLCanvasElement | undefined);
+    let ctx = $state(undefined as CanvasRenderingContext2D | undefined);
 
     const resizeHandler = () => {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        updateHitboxes();
+        if (canvas) {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            updateHitboxes();
+        }
     };
 
     // Variables pour le système de particules avec pooling
-    let particles: Particle[] = [];
-    let particlePool: Particle[] = []; // Pool de particules réutilisables
-    let particleContainer: HTMLElement | null = null;
+    let particles = $state([] as Particle[]);
+    let particlePool = $state([] as Particle[]);
+    let particleContainer = $state(null as HTMLElement | null);
     // Liste des différentes images de pétales disponibles
     let sakuraImages = [
         '/sakuras/sakura1.png',
@@ -122,7 +124,7 @@
         '/sakuras/petal13.png',
         '/sakuras/petal14.png',
     ];
-    let lastParticleId = 0;
+    let lastParticleId = $state(0);
 
     // Valeurs Z possibles pour les particules (intercalées entre les images)
     // Analyse des valeurs z existantes : 0, 0.3, 0.4, 0.5, 0.6
@@ -130,25 +132,26 @@
     let possibleZValues = [0.05, 0.15, 0.25, 0.35];
 
     // Variable pour le contrôle d'animation
-    let animationFrameId: number | null = null;
-    let particleAnimationId: number | null = null;
+    let animationFrameId = $state(null as number | null);
+    let particleAnimationId = $state(null as number | null);
 
     // Variables pour throttling hitbox
-    let lastCameraPosition = { x: 0, y: 0, z: 0 };
-    let lastCameraRotation = { x: 0, y: 0, z: 0 };
+    let lastCameraPosition = $state({ x: 0, y: 0, z: 0 });
+    let lastCameraRotation = $state({ x: 0, y: 0, z: 0 });
 
     // Objets réutilisables pour éviter allocations dans tick()
     const tempVector3 = typeof THREE !== 'undefined' ? new THREE.Vector3() : null;
     const screenPointsCache: {x: number, y: number}[] = [];
 
-    let images: TrackAsset[] = [
+    // Tableau d'images - les fonctions clickHandler ne sont pas réactives donc pas besoin de $state
+    const images: TrackAsset[] = [
         {
             name: 'background',
             z: 0,
             ratio: 1.55
         },
         { name: "pc", z: 0.2, clickHandler: () => {
-            devModal.showModal();
+            devModal?.showModal();
             // Démarrer l'animation lorsque la modal s'ouvre
             setTimeout(startSvgCodeAnimation, 300); // Petit délai pour que la modal s'ouvre d'abord
         }},
@@ -156,7 +159,7 @@
         { name: 'whale', z: 0.3, clickHandler: () => playAudio('trivia.mp3')},
         { name: 'paper_2', z: 0.3, clickHandler: () => collectPaper('paper_2', 'angular')  },
         { name: 'paper_6', z: 0.3, clickHandler: () => collectPaper('paper_6', 'angular') },
-        { name: 'phone', z: 0.35, clickHandler: () => creditsModal.showModal() },
+        { name: 'phone', z: 0.35, clickHandler: () => creditsModal?.showModal() },
         { name: 'book_2', z: 0.35, clickHandler: () => tookBook()},
         {
             name: 'girl',
@@ -167,7 +170,7 @@
         {
             name: 'scandal',
             z: 0.45,
-            clickHandler: () => scandalModal.showModal(),
+            clickHandler: () => scandalModal?.showModal(),
         },
         { name: 'book_1', z: 0.45, clickHandler: () => tookBook()},
         { name: 'book_3', z: 0.5, clickHandler: () => tookBook()},
@@ -217,15 +220,15 @@
         // Réinitialiser le conteneur de code et SVG
         if (codeContainer) codeContainer.textContent = '';
         if (svgContainer) svgContainer.innerHTML = '';
-        
+
         // Nettoyer tout timeout existant
         if (typingTimeout) clearTimeout(typingTimeout);
-        
+
         // Animation d'écriture caractère par caractère
         let charIndex = 0;
-        
+
         function typeNextChar() {
-            if (charIndex < svgCode.length) {
+            if (charIndex < svgCode.length && codeContainer) {
                 // Ajouter le caractère suivant
                 codeContainer.textContent += svgCode.charAt(charIndex);
                 // Faire défiler vers le bas pour rester au courant du texte
@@ -233,7 +236,7 @@
                 charIndex++;
                 // Programmer le prochain caractère
                 typingTimeout = setTimeout(typeNextChar, TYPING_SPEED);
-            } else {
+            } else if (svgContainer) {
                 // Animation terminée, afficher le SVG
                 svgContainer.innerHTML = svgCode;
                 // Ajouter une classe d'animation pour faire apparaître le SVG avec un effet
@@ -243,7 +246,7 @@
                 }
             }
         }
-        
+
         // Démarrer l'animation
         typeNextChar();
     }
@@ -256,7 +259,7 @@
         if (sceneEl) {
             sceneEl.addEventListener('loaded', () => {
                 // Accéder au renderer et ajuster les paramètres
-                const renderer = sceneEl.renderer;
+                const renderer = (sceneEl as AFrameElement).renderer;
                 if (renderer) {
                     // Désactiver automaticClear pour éviter certains problèmes de clipping
                     renderer.autoClear = false;
@@ -303,7 +306,7 @@
             playAudio('paper.mp3');
             if (papers[framework] === 0){
                 selectedPaper = framework;
-                paperModal.showModal();
+                paperModal?.showModal();
             }
         }
     }
@@ -513,7 +516,7 @@
         // Ajouter un gestionnaire de clic sur la scène
         const scene = document.querySelector('a-scene');
         if (scene) {
-            scene.addEventListener('click', handleSceneClick);
+            scene.addEventListener('click', handleSceneClick as EventListener);
         }
 
         // Gérer le redimensionnement de la fenêtre
@@ -572,6 +575,8 @@
 
     // Mise à jour des positions des hitbox existantes
     function updateHitboxes() {
+        if (!ctx || !canvas) return;
+
         // Effacer le canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -934,31 +939,34 @@
         imgHeight: number,
         ratio: number
     ): {x: number, y: number}[] {
+        if (!canvas || !tempVector3) return [];
+
         // Réinitialiser le cache au lieu de créer un nouveau tableau
         screenPointsCache.length = 0;
 
         const object3D = (aframeEl as any).object3D;
-        const camera = document.querySelector('a-camera')!.object3D.children[0] as THREE.Camera;
+        const cameraEl = document.querySelector('a-camera');
+        if (!cameraEl) return [];
+
+        const camera = (cameraEl as any).object3D.children[0] as THREE.Camera;
 
         // Réutiliser le même Vector3 pour tous les points
-        if (tempVector3) {
-            for (const point of contourPoints) {
-                const normalizedX = (point.x / imgWidth - 0.5) * getAssetWidth(ratio);
-                const normalizedY = (0.5 - point.y / imgHeight) * getAssetHeight(ratio);
+        for (const point of contourPoints) {
+            const normalizedX = (point.x / imgWidth - 0.5) * getAssetWidth(ratio);
+            const normalizedY = (0.5 - point.y / imgHeight) * getAssetHeight(ratio);
 
-                // Réutiliser tempVector3 au lieu de créer un nouveau Vector3
-                tempVector3.set(normalizedX, normalizedY, 0);
-                tempVector3.applyMatrix4(object3D.matrixWorld);
+            // Réutiliser tempVector3 au lieu de créer un nouveau Vector3
+            tempVector3.set(normalizedX, normalizedY, 0);
+            tempVector3.applyMatrix4(object3D.matrixWorld);
 
-                // Projeter en 2D
-                const screenPos = tempVector3.project(camera);
+            // Projeter en 2D
+            const screenPos = tempVector3.project(camera);
 
-                // Convertir en pixels
-                const screenX = (screenPos.x + 1) / 2 * canvas.width;
-                const screenY = (-screenPos.y + 1) / 2 * canvas.height;
+            // Convertir en pixels
+            const screenX = (screenPos.x + 1) / 2 * canvas.width;
+            const screenY = (-screenPos.y + 1) / 2 * canvas.height;
 
-                screenPointsCache.push({x: screenX, y: screenY});
-            }
+            screenPointsCache.push({x: screenX, y: screenY});
         }
 
         // Retourner une copie pour éviter mutations externes
@@ -967,6 +975,8 @@
 
     // Gestionnaire de clic sur la scène
     function handleSceneClick(event: MouseEvent) {
+        if (!ctx) return;
+
         // Coordonnées du clic
         const x = event.clientX;
         const y = event.clientY;
@@ -983,14 +993,16 @@
                     }
 
                     // En mode debug, mettre en évidence la hitbox cliquée
-                    if (debug) {
+                    if (debug && ctx) {
                         const originalStrokeStyle = ctx.strokeStyle;
                         ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
                         ctx.lineWidth = 4;
                         ctx.stroke(hitbox.path);
                         setTimeout(() => {
-                            ctx.strokeStyle = originalStrokeStyle;
-                            ctx.lineWidth = 2;
+                            if (ctx) {
+                                ctx.strokeStyle = originalStrokeStyle;
+                                ctx.lineWidth = 2;
+                            }
                         }, 500);
                     }
                 }
@@ -1081,7 +1093,7 @@
         // Nettoyage
         const scene = document.querySelector('a-scene');
         if (scene) {
-            scene.removeEventListener('click', handleSceneClick);
+            scene.removeEventListener('click', handleSceneClick as EventListener);
         }
 
         window.removeEventListener('resize', resizeHandler);
@@ -1105,12 +1117,12 @@
         <a-entity mindar-image-target="targetIndex: 0">
             <!-- Image originale -->
             {#each images as image}
-                <a-image src="{'/track_assets/'+image.name+'.png'}" alt="frame"
+                <a-image src={`/track_assets/${image.name}.png`} alt="frame"
                          visible="true"
-                         position="{'0 0 '+image.z}"
-                         class="{image.name}"
-                         height="{getAssetHeight(image.ratio ?? assetRatio)}"
-                         width="{getAssetWidth(image.ratio ?? 1)}" rotation="0 0 0"
+                         position={`0 0 ${image.z}`}
+                         class={image.name}
+                         height={getAssetHeight(image.ratio ?? assetRatio)}
+                         width={getAssetWidth(image.ratio ?? 1)} rotation="0 0 0"
                          material="transparent: true; alphaTest: 0.5; depthTest: false; depthWrite: false; opacity: 1"
                          loading="lazy"
                 ></a-image>

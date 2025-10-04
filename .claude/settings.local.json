@@ -12,7 +12,10 @@
       "Bash(pnpm run check:*)",
       "Bash(pnpm run:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "mcp__sequential__sequentialthinking",
+      "mcp__serena__get_symbols_overview",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []
