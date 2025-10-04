@@ -76,7 +76,7 @@
     }
 
     // Variables pour stocker les références aux objets AR
-    let container = $state(undefined as HTMLElement | undefined);
+    // let container = $state(undefined as HTMLElement | undefined); // TODO: À utiliser ou supprimer
 
     // Variables pour la gestion des hitbox
     let hitboxes = $state([] as {
@@ -738,16 +738,16 @@
         const outlinePoints: {x: number, y: number}[] = [];
 
         // 1. Trouver les contours par balayage en croix depuis le centre
-        const directions = [
-            { dx: 1, dy: 0 },   // droite
-            { dx: 0, dy: 1 },   // bas
-            { dx: -1, dy: 0 },  // gauche
-            { dx: 0, dy: -1 },  // haut
-            { dx: 1, dy: 1 },   // diagonale bas-droite
-            { dx: -1, dy: 1 },  // diagonale bas-gauche
-            { dx: -1, dy: -1 }, // diagonale haut-gauche
-            { dx: 1, dy: -1 }   // diagonale haut-droite
-        ];
+        // const directions = [ // TODO: Implémenter balayage directionnel ou supprimer
+        //     { dx: 1, dy: 0 },   // droite
+        //     { dx: 0, dy: 1 },   // bas
+        //     { dx: -1, dy: 0 },  // gauche
+        //     { dx: 0, dy: -1 },  // haut
+        //     { dx: 1, dy: 1 },   // diagonale bas-droite
+        //     { dx: -1, dy: 1 },  // diagonale bas-gauche
+        //     { dx: -1, dy: -1 }, // diagonale haut-gauche
+        //     { dx: 1, dy: -1 }   // diagonale haut-droite
+        // ];
 
         // 2. Trouver le centre de l'image approximativement
         let centerX = Math.floor(width / 2);
