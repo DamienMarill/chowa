@@ -76,12 +76,21 @@
     let canvas = $state(undefined as HTMLCanvasElement | undefined);
     let ctx = $state(undefined as CanvasRenderingContext2D | undefined);
 
+    // Debounce pour le resize handler
+    let resizeTimeout: NodeJS.Timeout | null = null;
+    
     const resizeHandler = () => {
-        if (canvas) {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            updateHitboxes();
+        if (resizeTimeout) {
+            clearTimeout(resizeTimeout);
         }
+        
+        resizeTimeout = setTimeout(() => {
+            if (canvas) {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                updateHitboxes();
+            }
+        }, 150); // Debounce de 150ms
     };
 
 
@@ -302,11 +311,16 @@
      * Ne met à jour les hitbox que si la caméra a bougé significativement
      */
     function startHitboxUpdateLoop() {
+        let cameraCache: AFrameElement | null = null;
+        
         const updateLoop = () => {
-            const camera = document.querySelector('a-camera');
+            // Cache de la caméra pour éviter querySelector répété
+            if (!cameraCache) {
+                cameraCache = document.querySelector('a-camera') as AFrameElement;
+            }
 
-            if (camera) {
-                const cameraObj = (camera as AFrameElement).object3D;
+            if (cameraCache) {
+                const cameraObj = cameraCache.object3D;
                 const pos = cameraObj.position;
                 const rot = cameraObj.rotation;
 
@@ -797,9 +811,17 @@
             cancelAnimationFrame(animationFrameId);
         }
 
+        // Nettoyer le timeout de resize
+        if (resizeTimeout) {
+            clearTimeout(resizeTimeout);
+        }
 
+        // Nettoyer le timeout de typage
+        if (typingTimeout) {
+            clearTimeout(typingTimeout);
+        }
 
-        // Nettoyage
+        // Nettoyage des event listeners
         const scene = document.querySelector('a-scene');
         if (scene) {
             scene.removeEventListener('click', handleSceneClick as EventListener);
@@ -814,7 +836,7 @@
 </script>
 
 <main>
-    <a-scene mindar-image="imageTargetSrc: /chowa.mind;" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false" renderer="logarithmicDepthBuffer: true; colorManagement: true; highPerformance: true; physicallyCorrectLights: true;">
+    <a-scene mindar-image="imageTargetSrc: /chowa.mind;" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false" renderer="logarithmicDepthBuffer: true; colorManagement: true; highPerformance: true; physicallyCorrectLights: true; antialias: false; powerPreference: high-performance;" stats="false">
         <a-assets></a-assets>
 
         <a-camera position="0 0 0" look-controls="enabled: false" near="0.01" far="10000"></a-camera>

@@ -10,7 +10,7 @@ export const TYPING_SPEED = 20; // millisecondes par caractère
 
 // Système de particules
 export const PARTICLE_CONFIG = {
-    COUNT: 50,
+    COUNT: 30, // Réduit de 50 à 30 pour meilleures performances
     SCALE: {
         MIN: 0.01,
         MAX: 0.1

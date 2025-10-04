@@ -53,8 +53,12 @@
         });
     }
 
-    function animate() {
-        const deltaTime = 16; // ~60 FPS
+    let lastTimestamp = 0;
+
+    function animate(timestamp: number) {
+        const deltaTime = lastTimestamp ? timestamp - lastTimestamp : 16;
+        lastTimestamp = timestamp;
+        
         updateParticles(deltaTime);
 
         const animationId = requestAnimationFrame(animate);
@@ -64,7 +68,7 @@
     onMount(() => {
         initParticles();
         particleState.setAnimating(true);
-        animate();
+        requestAnimationFrame(animate);
     });
 
     onDestroy(() => {
@@ -105,5 +109,9 @@
         position: absolute;
         pointer-events: none;
         will-change: transform, opacity;
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
     }
 </style>
