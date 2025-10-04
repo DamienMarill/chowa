@@ -3,18 +3,15 @@
     import 'aframe';
     import 'mind-ar/dist/mindar-image-aframe.prod.js';
     import { sortPointsClockwise, simplifyPolygon } from './geometry';
-
-    // Configuration et constantes
-    const DEBUG = false;
-    const TYPING_SPEED = 20; // millisecondes par caractère
-    const PARTICLE_COUNT = 50;
-    const ALPHA_THRESHOLD = 127; // Seuil pour pixels non transparents
-    const CONTOUR_STEP = 5; // Distance entre points échantillonnés
-    const SIMPLIFY_TOLERANCE = 5.0; // Tolérance Douglas-Peucker
-    const NUM_RAYS = 36; // Nombre de rayons pour détection contour
-    const ASSET_RATIO_DEFAULT = 1;
-    const A4_RATIO = 21 / 29.7;
-    const CAMERA_MOVE_THRESHOLD = 0.001; // Seuil de mouvement caméra pour update hitbox
+    import {
+        DEBUG,
+        TYPING_SPEED,
+        PARTICLE_CONFIG,
+        CONTOUR_CONFIG,
+        ASSET_CONFIG,
+        CAMERA_CONFIG,
+        DEFAULT_PAPERS
+    } from './config/constants';
 
     let debug = $state(DEBUG);
 
@@ -35,11 +32,7 @@
     let svgContainer = $state(undefined as HTMLElement | undefined);
     let typingTimeout = $state(undefined as NodeJS.Timeout | undefined);
 
-    let papers = $state({
-        angular: 3,
-        laravel: 3,
-        tailwind: 2,
-    } as Record<string, number>);
+    let papers = $state({ ...DEFAULT_PAPERS } as Record<string, number>);
     let selectedPaper = $state('');
 
     // Extension de l'interface trackAsset pour inclure les handlers de clic
@@ -72,14 +65,14 @@
         image: string; // Pour stocker le chemin de l'image utilisée
     }
 
-    let assetRatio = $state(ASSET_RATIO_DEFAULT);
+    let assetRatio = $state(ASSET_CONFIG.RATIO_DEFAULT);
 
     function getAssetWidth(ratio: number){
         return ratio;
     }
 
     function getAssetHeight(ratio: number){
-        return A4_RATIO * ratio;
+        return ASSET_CONFIG.A4_RATIO * ratio;
     }
 
     // Variables pour stocker les références aux objets AR
@@ -438,7 +431,7 @@
     function generateParticles() {
         particles = [];
 
-        for (let i = 0; i < PARTICLE_COUNT; i++) {
+        for (let i = 0; i < PARTICLE_CONFIG.COUNT; i++) {
             const particle = acquireParticle();
             particle.y = -1 + Math.random() * 3; // Répartir sur toute la hauteur
             particles.push(particle);
@@ -549,7 +542,7 @@
                 const dz = pos.z - lastCameraPosition.z;
                 const dr = Math.abs(rot.y - lastCameraRotation.y); // Rotation Y principalement
 
-                const moved = Math.sqrt(dx * dx + dy * dy + dz * dz) > CAMERA_MOVE_THRESHOLD || dr > 0.01;
+                const moved = Math.sqrt(dx * dx + dy * dy + dz * dz) > CAMERA_CONFIG.MOVE_THRESHOLD || dr > 0.01;
 
                 if (moved) {
                     updateHitboxes();
@@ -772,7 +765,7 @@
 
                 if (testX >= 0 && testX < width && testY >= 0 && testY < height) {
                     const idx = (testY * width + testX) * 4;
-                    if (data[idx + 3] > ALPHA_THRESHOLD) {
+                    if (data[idx + 3] > CONTOUR_CONFIG.ALPHA_THRESHOLD) {
                         centerX = testX;
                         centerY = testY;
                         found = true;
@@ -789,12 +782,12 @@
             let maxY = 0;
 
             // Chercher les limites des pixels non transparents
-            for (let y = 0; y < height; y += CONTOUR_STEP) {
-                for (let x = 0; x < width; x += CONTOUR_STEP) {
+            for (let y = 0; y < height; y += CONTOUR_CONFIG.STEP) {
+                for (let x = 0; x < width; x += CONTOUR_CONFIG.STEP) {
                     const idx = (y * width + x) * 4;
                     const alpha = data[idx + 3];
 
-                    if (alpha > ALPHA_THRESHOLD) {
+                    if (alpha > CONTOUR_CONFIG.ALPHA_THRESHOLD) {
                         minX = Math.min(minX, x);
                         minY = Math.min(minY, y);
                         maxX = Math.max(maxX, x);
@@ -818,7 +811,7 @@
         }
 
         // 3. Pour chaque direction, lancer des rayons depuis le centre
-        for (let angle = 0; angle < 2 * Math.PI; angle += (2 * Math.PI) / NUM_RAYS) {
+        for (let angle = 0; angle < 2 * Math.PI; angle += (2 * Math.PI) / CONTOUR_CONFIG.NUM_RAYS) {
             let x = centerX;
             let y = centerY;
             let lastOpaque = true;
@@ -839,7 +832,7 @@
                 }
 
                 const idx = (y * width + x) * 4;
-                const isOpaque = data[idx + 3] > ALPHA_THRESHOLD;
+                const isOpaque = data[idx + 3] > CONTOUR_CONFIG.ALPHA_THRESHOLD;
 
                 // Si on passe de opaque à transparent, on a trouvé un point de contour
                 if (lastOpaque && !isOpaque) {
@@ -853,10 +846,10 @@
 
         // 4. Parcourir les bordures pour ajouter des points supplémentaires
         // Bordure supérieure
-        for (let x = 0; x < width; x += CONTOUR_STEP) {
+        for (let x = 0; x < width; x += CONTOUR_CONFIG.STEP) {
             for (let y = 0; y < height; y += 1) {
                 const idx = (y * width + x) * 4;
-                if (data[idx + 3] > ALPHA_THRESHOLD) {
+                if (data[idx + 3] > CONTOUR_CONFIG.ALPHA_THRESHOLD) {
                     outlinePoints.push({x, y});
                     break;
                 }
@@ -864,10 +857,10 @@
         }
 
         // Bordure inférieure
-        for (let x = 0; x < width; x += CONTOUR_STEP) {
+        for (let x = 0; x < width; x += CONTOUR_CONFIG.STEP) {
             for (let y = height - 1; y >= 0; y -= 1) {
                 const idx = (y * width + x) * 4;
-                if (data[idx + 3] > ALPHA_THRESHOLD) {
+                if (data[idx + 3] > CONTOUR_CONFIG.ALPHA_THRESHOLD) {
                     outlinePoints.push({x, y});
                     break;
                 }
@@ -875,10 +868,10 @@
         }
 
         // Bordure gauche
-        for (let y = 0; y < height; y += CONTOUR_STEP) {
+        for (let y = 0; y < height; y += CONTOUR_CONFIG.STEP) {
             for (let x = 0; x < width; x += 1) {
                 const idx = (y * width + x) * 4;
-                if (data[idx + 3] > ALPHA_THRESHOLD) {
+                if (data[idx + 3] > CONTOUR_CONFIG.ALPHA_THRESHOLD) {
                     outlinePoints.push({x, y});
                     break;
                 }
@@ -886,10 +879,10 @@
         }
 
         // Bordure droite
-        for (let y = 0; y < height; y += CONTOUR_STEP) {
+        for (let y = 0; y < height; y += CONTOUR_CONFIG.STEP) {
             for (let x = width - 1; x >= 0; x -= 1) {
                 const idx = (y * width + x) * 4;
-                if (data[idx + 3] > ALPHA_THRESHOLD) {
+                if (data[idx + 3] > CONTOUR_CONFIG.ALPHA_THRESHOLD) {
                     outlinePoints.push({x, y});
                     break;
                 }
@@ -922,7 +915,7 @@
         const sortedPoints = sortPointsClockwise(outlinePoints, centerX, centerY);
 
         // 7. Simplifier le polygone avec l'algorithme de Douglas-Peucker
-        const simplifiedPoints = simplifyPolygon(sortedPoints, SIMPLIFY_TOLERANCE);
+        const simplifiedPoints = simplifyPolygon(sortedPoints, CONTOUR_CONFIG.SIMPLIFY_TOLERANCE);
 
         return simplifiedPoints;
     }

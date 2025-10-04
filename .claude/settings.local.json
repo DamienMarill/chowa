@@ -15,7 +15,11 @@
       "Bash(git commit:*)",
       "mcp__sequential__sequentialthinking",
       "mcp__serena__get_symbols_overview",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "mcp__serena__get_current_config",
+      "mcp__serena__list_memories",
+      "mcp__serena__read_memory",
+      "Bash(cloc:*)"
     ],
     "deny": [],
     "ask": []
