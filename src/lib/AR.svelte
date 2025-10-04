@@ -18,6 +18,13 @@
 
     let debug = $state(DEBUG);
 
+    // Logger conditionnel basé sur DEBUG
+    const logger = {
+        log: (...args: unknown[]) => debug && console.log(...args),
+        warn: (...args: unknown[]) => debug && console.warn(...args),
+        error: (...args: unknown[]) => console.error(...args) // Toujours logger les erreurs
+    };
+
     let paperModal = $state(undefined as HTMLDialogElement | undefined);
     let scandalModal = $state(undefined as HTMLDialogElement | undefined);
     let creditsModal = $state(undefined as HTMLDialogElement | undefined);
@@ -287,7 +294,7 @@
         setTimeout(async () => {
             await generateHitboxes();
             if (debug) {
-                console.log('Initial hitboxes generated:', hitboxes.length);
+                logger.log('Initial hitboxes generated:', hitboxes.length);
             }
 
             // Démarrer la boucle d'animation pour mettre à jour les hitbox
@@ -298,7 +305,7 @@
     function collectPaper(name: string, framework: string){
         let element = document.querySelector('.'+name);
         if (debug) {
-            console.log(element);
+            logger.log(element);
         }
         if (element?.getAttribute('visible')){
             element?.setAttribute('visible', 'false');
@@ -322,7 +329,7 @@
         // Trouver le conteneur AR où placer les particules
         const arEntity = document.querySelector('a-entity[mindar-image-target]');
         if (!arEntity) {
-            console.error('AR entity not found for particle system');
+            logger.error('AR entity not found for particle system');
             return;
         }
 
@@ -629,7 +636,7 @@
                     }
                 }
             } catch (error) {
-                console.error(`Error updating hitbox for ${hitbox.imageId}:`, error);
+                logger.error(`Error updating hitbox for ${hitbox.imageId}:`, error);
             }
         }
     }
@@ -665,7 +672,7 @@
                         // Obtenir la position et les dimensions de l'élément A-Frame
                         const aframeEl = document.querySelector(`a-image[src="/track_assets/${image.name}.png"]`);
                         if (!aframeEl) {
-                            console.warn(`A-Frame element for ${image.name} not found`);
+                            logger.warn(`A-Frame element for ${image.name} not found`);
                             resolve(null);
                             return;
                         }
@@ -701,21 +708,21 @@
                                 aframeEl
                             });
                         } else {
-                            console.warn(`No valid screen points for ${image.name}`);
+                            logger.warn(`No valid screen points for ${image.name}`);
                             resolve(null);
                         }
                     } else {
-                        console.warn(`No contour points detected for ${image.name}`);
+                        logger.warn(`No contour points detected for ${image.name}`);
                         resolve(null);
                     }
                 } catch (error) {
-                    console.error(`Error generating hitbox for ${image.name}:`, error);
+                    logger.error(`Error generating hitbox for ${image.name}:`, error);
                     resolve(null);
                 }
             };
 
             img.onerror = () => {
-                console.error(`Failed to load image: ${image.name}`);
+                logger.error(`Failed to load image: ${image.name}`);
                 resolve(null);
             };
 
@@ -989,7 +996,7 @@
                 if (clickedImage && clickedImage.clickHandler) {
                     clickedImage.clickHandler();
                     if (debug) {
-                        console.log(`Clicked on ${hitbox.imageId} at depth ${hitbox.z}`);
+                        logger.log(`Clicked on ${hitbox.imageId} at depth ${hitbox.z}`);
                     }
 
                     // En mode debug, mettre en évidence la hitbox cliquée
@@ -1056,7 +1063,7 @@
                     audioInstances[id].currentTime = 0;
                 }
                 audioInstances[id].play()
-                    .catch(error => console.error(`Erreur lors de la lecture de l'audio ${filename}:`, error));
+                    .catch(error => logger.error(`Erreur lors de la lecture de l'audio ${filename}:`, error));
             }
             return audioInstances[id];
         }
@@ -1072,7 +1079,7 @@
         // Lire l'audio si autoplay est activé
         if (autoplay) {
             audio.play()
-                .catch(error => console.error(`Erreur lors de la lecture de l'audio ${filename}:`, error));
+                .catch(error => logger.error(`Erreur lors de la lecture de l'audio ${filename}:`, error));
         }
         
         return audio;
