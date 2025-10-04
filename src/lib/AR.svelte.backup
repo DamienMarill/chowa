@@ -6,21 +6,13 @@
     import {
         DEBUG,
         TYPING_SPEED,
+        PARTICLE_CONFIG,
         CONTOUR_CONFIG,
         ASSET_CONFIG,
-        CAMERA_CONFIG
+        CAMERA_CONFIG,
+        AUDIO_CONFIG,
+        DEFAULT_PAPERS
     } from './config/constants';
-
-    // Stores
-    import { gameState } from './stores/gameState.svelte';
-
-    // Managers
-    import { AudioManager } from './audio/AudioManager';
-
-    // Composants UI
-    import PaperModal from './ui/PaperModal.svelte';
-    import ParticleLayer from './ui/ParticleLayer.svelte';
-    import Modal from './ui/Modal.svelte';
 
     let debug = $state(DEBUG);
 
@@ -31,17 +23,18 @@
         error: (...args: unknown[]) => console.error(...args) // Toujours logger les erreurs
     };
 
-    let showPaperModal = $state(false);
-    let showScandalModal = $state(false);
-    let showCreditsModal = $state(false);
-    let showDevModal = $state(false);
+    let paperModal = $state(undefined as HTMLDialogElement | undefined);
+    let scandalModal = $state(undefined as HTMLDialogElement | undefined);
+    let creditsModal = $state(undefined as HTMLDialogElement | undefined);
+    let devModal = $state(undefined as HTMLDialogElement | undefined);
 
     // Variables pour l'animation SVG
     let codeContainer = $state(undefined as HTMLElement | undefined);
     let svgContainer = $state(undefined as HTMLElement | undefined);
     let typingTimeout = $state(undefined as NodeJS.Timeout | undefined);
 
-
+    let papers = $state({ ...DEFAULT_PAPERS } as Record<string, number>);
+    let selectedPaper = $state('');
 
     // Extension de l'interface trackAsset pour inclure les handlers de clic
     interface TrackAsset {
@@ -51,7 +44,27 @@
         clickHandler?: () => void;
     }
 
-
+    // Interface pour les particules
+    interface Particle {
+        id: number;
+        x: number;
+        y: number;
+        z: number;
+        rotationX: number;
+        rotationY: number;
+        rotationZ: number;
+        scale: number;
+        speedY: number;
+        speedX: number; // Ajout d'une vitesse horizontale pour le mouvement vers la droite
+        speedRotationX: number;
+        speedRotationY: number;
+        speedRotationZ: number;
+        swayFrequency: number;
+        swayAmplitude: number;
+        swayOffset: number;
+        element: HTMLElement | null;
+        image: string; // Pour stocker le chemin de l'image utilisée
+    }
 
     let assetRatio = $state(ASSET_CONFIG.RATIO_DEFAULT);
 
@@ -84,10 +97,44 @@
         }
     };
 
+    // Variables pour le système de particules avec pooling
+    let particles = $state([] as Particle[]);
+    let particlePool = $state([] as Particle[]);
+    let particleContainer = $state(null as HTMLElement | null);
+    // Liste des différentes images de pétales disponibles
+    let sakuraImages = [
+        '/sakuras/sakura1.png',
+        '/sakuras/sakura2.png',
+        '/sakuras/sakura3.png',
+        '/sakuras/sakura4.png',
+        '/sakuras/sakura5.png',
+        '/sakuras/sakura6.png',
+        '/sakuras/sakura7.png',
+        '/sakuras/petal1.png',
+        '/sakuras/petal2.png',
+        '/sakuras/petal3.png',
+        '/sakuras/petal4.png',
+        '/sakuras/petal5.png',
+        '/sakuras/petal6.png',
+        '/sakuras/petal7.png',
+        '/sakuras/petal8.png',
+        '/sakuras/petal9.png',
+        '/sakuras/petal10.png',
+        '/sakuras/petal11.png',
+        '/sakuras/petal12.png',
+        '/sakuras/petal13.png',
+        '/sakuras/petal14.png',
+    ];
+    let lastParticleId = $state(0);
 
+    // Valeurs Z possibles pour les particules (intercalées entre les images)
+    // Analyse des valeurs z existantes : 0, 0.3, 0.4, 0.5, 0.6
+    // Nous créons des positions intermédiaires pour placer les particules
+    let possibleZValues = [0.05, 0.15, 0.25, 0.35];
 
-    // Variable pour la boucle d'animation hitbox
+    // Variable pour le contrôle d'animation
     let animationFrameId = $state(null as number | null);
+    let particleAnimationId = $state(null as number | null);
 
     // Variables pour throttling hitbox
     let lastCameraPosition = $state({ x: 0, y: 0, z: 0 });
@@ -105,31 +152,31 @@
             ratio: 1.55
         },
         { name: "pc", z: 0.2, clickHandler: () => {
-            showDevModal = true;
+            devModal?.showModal();
             // Démarrer l'animation lorsque la modal s'ouvre
             setTimeout(startSvgCodeAnimation, 300); // Petit délai pour que la modal s'ouvre d'abord
         }},
-        { name: 'bibi', z: 0.3, clickHandler: () => audioManager.play('cafe.mp3', {volume: 0.3}) },
-        { name: 'whale', z: 0.3, clickHandler: () => audioManager.play('trivia.mp3')},
+        { name: 'bibi', z: 0.3, clickHandler: () => playAudio('cafe.mp3', {volume: 0.3}) },
+        { name: 'whale', z: 0.3, clickHandler: () => playAudio('trivia.mp3')},
         { name: 'paper_2', z: 0.3, clickHandler: () => collectPaper('paper_2', 'angular')  },
         { name: 'paper_6', z: 0.3, clickHandler: () => collectPaper('paper_6', 'angular') },
-        { name: 'phone', z: 0.35, clickHandler: () => showCreditsModal = true },
+        { name: 'phone', z: 0.35, clickHandler: () => creditsModal?.showModal() },
         { name: 'book_2', z: 0.35, clickHandler: () => tookBook()},
         {
             name: 'girl',
             z: 0.4,
-            clickHandler: () => audioManager.play('Million-dreams.mp3'),
+            clickHandler: () => playAudio('Million-dreams.mp3'),
         },
         { name: 'paper_8', z: 0.4, clickHandler: () => collectPaper('paper_8', 'laravel') },
         {
             name: 'scandal',
             z: 0.45,
-            clickHandler: () => showScandalModal = true,
+            clickHandler: () => scandalModal?.showModal(),
         },
         { name: 'book_1', z: 0.45, clickHandler: () => tookBook()},
         { name: 'book_3', z: 0.5, clickHandler: () => tookBook()},
         { name: 'mimiqui', z: 0.5, clickHandler: () => {
-            audioManager.play('mimiqui.mp3', {volume: 0.3});
+            playAudio('mimiqui.mp3', {volume: 0.3});
         }},
 
         //paper - tu peux personnaliser les actions pour chaque papier ici
@@ -228,7 +275,8 @@
                     camera.setAttribute('near', '0.01');
                 }
 
-
+                // Initialiser le système de particules
+                initParticleSystem();
             });
         }
 
@@ -255,11 +303,11 @@
         }
         if (element?.getAttribute('visible')){
             element?.setAttribute('visible', 'false');
-            gameState.collectPaper(framework);
-            audioManager.play('paper.mp3');
-            if (gameState.papers[framework] === 0){
-                gameState.selectPaper(framework);
-                showPaperModal = true;
+            papers[framework] -= 1;
+            playAudio('paper.mp3');
+            if (papers[framework] === 0){
+                selectedPaper = framework;
+                paperModal?.showModal();
             }
         }
     }
@@ -267,10 +315,189 @@
     function tookBook(){
         let sounds = ['book1.mp3', 'book2.mp3', 'book3.mp3'];
         let randomSound = sounds[Math.floor(Math.random() * sounds.length)];
-        audioManager.play(randomSound);
+        playAudio(randomSound);
     }
 
+    // Initialisation du système de particules
+    function initParticleSystem() {
+        // Trouver le conteneur AR où placer les particules
+        const arEntity = document.querySelector('a-entity[mindar-image-target]');
+        if (!arEntity) {
+            logger.error('AR entity not found for particle system');
+            return;
+        }
 
+        // Créer un conteneur pour les particules
+        particleContainer = document.createElement('a-entity');
+        particleContainer.setAttribute('id', 'particle-container');
+        arEntity.appendChild(particleContainer);
+
+        // Générer les particules initiales
+        generateParticles();
+
+        // Démarrer l'animation des particules
+        startParticleAnimation();
+    }
+
+    // Sélectionner aléatoirement une image de pétale
+    function getRandomSakuraImage(): string {
+        const randomIndex = Math.floor(Math.random() * sakuraImages.length);
+        return sakuraImages[randomIndex];
+    }
+
+    /**
+     * Acquiert une particule du pool ou en crée une nouvelle
+     * @returns Particule réinitialisée avec nouvelles propriétés physiques
+     */
+    function acquireParticle(): Particle {
+        let particle = particlePool.pop();
+
+        if (!particle) {
+            // Créer une nouvelle particule si le pool est vide
+            lastParticleId++;
+            const image = getRandomSakuraImage();
+
+            particle = {
+                id: lastParticleId,
+                x: 0,
+                y: 0,
+                z: 0,
+                rotationX: 0,
+                rotationY: 0,
+                rotationZ: 0,
+                scale: 0,
+                speedY: 0,
+                speedX: 0,
+                speedRotationX: 0,
+                speedRotationY: 0,
+                speedRotationZ: 0,
+                swayFrequency: 0,
+                swayAmplitude: 0,
+                swayOffset: 0,
+                element: null,
+                image: image
+            };
+
+            // Créer l'élément A-Frame une seule fois
+            if (particleContainer) {
+                const el = document.createElement('a-plane');
+                el.setAttribute('id', `particle-${particle.id}`);
+                el.setAttribute('src', particle.image);
+                el.setAttribute('width', '1');
+                el.setAttribute('height', '1');
+                el.setAttribute('material', 'transparent: true; alphaTest: 0.5; depthTest: true; depthWrite: false;');
+                particleContainer.appendChild(el);
+                particle.element = el;
+            }
+        }
+
+        // Réinitialiser les propriétés physiques
+        particle.x = (Math.random() * 2 - 1.5) * 1.2;
+        particle.y = 1.2 + Math.random() * 0.5;
+        particle.z = possibleZValues[Math.floor(Math.random() * possibleZValues.length)];
+        particle.rotationX = Math.random() * 360;
+        particle.rotationY = Math.random() * 360;
+        particle.rotationZ = Math.random() * 360;
+        particle.scale = 0.01 + Math.random() * 0.09;
+        particle.speedY = 0.0005 + Math.random() * 0.0008;
+        particle.speedX = 0.0002 + Math.random() * 0.0003;
+        particle.speedRotationX = (Math.random() - 0.5) * 0.2;
+        particle.speedRotationY = (Math.random() - 0.5) * 0.2;
+        particle.speedRotationZ = (Math.random() - 0.5) * 0.2;
+        particle.swayFrequency = 0.2 + Math.random() * 0.4;
+        particle.swayAmplitude = 0.0005 + Math.random() * 0.001;
+        particle.swayOffset = Math.random() * Math.PI * 2;
+
+        // Mettre à jour l'élément visuel
+        if (particle.element) {
+            particle.element.setAttribute('scale', `${particle.scale} ${particle.scale} ${particle.scale}`);
+            particle.element.setAttribute('position', `${particle.x} ${particle.y} ${particle.z}`);
+            particle.element.setAttribute('rotation', `${particle.rotationX} ${particle.rotationY} ${particle.rotationZ}`);
+        }
+
+        return particle;
+    }
+
+    /**
+     * Libère une particule vers le pool pour réutilisation
+     * @param particle - Particule à recycler
+     */
+    function releaseParticle(particle: Particle): void {
+        particlePool.push(particle);
+    }
+
+    /**
+     * Génère les particules initiales en utilisant le pool
+     */
+    function generateParticles() {
+        particles = [];
+
+        for (let i = 0; i < PARTICLE_CONFIG.COUNT; i++) {
+            const particle = acquireParticle();
+            particle.y = -1 + Math.random() * 3; // Répartir sur toute la hauteur
+            particles.push(particle);
+        }
+    }
+
+    // Animation des particules
+    function updateParticles(deltaTime: number) {
+        for (let i = 0; i < particles.length; i++) {
+            const particle = particles[i];
+
+            // Mettre à jour la position Y (chute)
+            particle.y -= particle.speedY * deltaTime;
+
+            // Mettre à jour la position X (dérive horizontale vers la droite)
+            particle.x += particle.speedX * deltaTime;
+
+            // Oscillation latérale (effet de flottement plus subtil)
+            const swayX = Math.sin((Date.now() * 0.001 * particle.swayFrequency) + particle.swayOffset) * particle.swayAmplitude * deltaTime;
+            particle.x += swayX;
+
+            // Rotation
+            particle.rotationX += particle.speedRotationX * deltaTime;
+            particle.rotationY += particle.speedRotationY * deltaTime;
+            particle.rotationZ += particle.speedRotationZ * deltaTime;
+
+            // Vérifier si la particule est sortie de la scène (par le bas ou la droite)
+            if (particle.y < -1.5 || particle.x > 1.5) {
+                // Recycler la particule via le pool
+                releaseParticle(particle);
+                const newParticle = acquireParticle();
+                particles[i] = newParticle;
+
+                // Changer de type de pétale pour variété
+                if (newParticle.element) {
+                    const newImage = getRandomSakuraImage();
+                    newParticle.image = newImage;
+                    newParticle.element.setAttribute('src', newImage);
+                }
+            }
+
+            // Mettre à jour l'élément A-Frame
+            if (particle.element) {
+                particle.element.setAttribute('position', `${particle.x} ${particle.y} ${particle.z}`);
+                particle.element.setAttribute('rotation', `${particle.rotationX} ${particle.rotationY} ${particle.rotationZ}`);
+            }
+        }
+    }
+
+    // Démarrer l'animation des particules
+    function startParticleAnimation() {
+        let lastTime = performance.now();
+
+        const animateParticles = () => {
+            const currentTime = performance.now();
+            const deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+
+            updateParticles(deltaTime);
+
+            particleAnimationId = requestAnimationFrame(animateParticles);
+        };
+
+        particleAnimationId = requestAnimationFrame(animateParticles);
+    }
 
     // Configuration du système de détection de clics
     function setupClickDetection() {
@@ -787,8 +1014,87 @@
     }
 
 
-    // Instance AudioManager
-    const audioManager = new AudioManager();
+    // Stockage des instances audio actives pour pouvoir les gérer
+    const audioInstances: { [key: string]: HTMLAudioElement } = {};
+
+    /**
+     * Joue un fichier audio depuis le dossier public/divers
+     * Gère le pooling d'instances pour éviter les créations multiples
+     * @param filename - Nom du fichier audio (avec son extension)
+     * @param options - Options de lecture (volume, loop, autoplay, id)
+     * @param options.volume - Volume de 0.0 à 1.0 (défaut: 1.0)
+     * @param options.loop - Répéter en boucle (défaut: false)
+     * @param options.autoplay - Lecture automatique (défaut: true)
+     * @param options.id - Identifiant unique (défaut: filename)
+     * @returns L'élément audio créé ou existant
+     */
+    function playAudio(
+        filename: string,
+        options: {
+            volume?: number;     // Volume (0.0 à 1.0)
+            loop?: boolean;      // Répéter la lecture en boucle
+            autoplay?: boolean;  // Lecture automatique
+            id?: string;         // Identifiant unique (utilise le nom du fichier par défaut)
+        } = {}
+    ): HTMLAudioElement {
+        // Options par défaut
+        const {
+            volume = AUDIO_CONFIG.DEFAULT_VOLUME,
+            loop = false,
+            autoplay = true,
+            id = filename
+        } = options;
+
+        // Chemin complet vers le fichier audio
+        const audioPath = `/divers/${filename}`;
+
+        // Vérifier si une instance avec cet ID existe déjà
+        if (audioInstances[id]) {
+            // Si l'instance existe déjà et que autoplay est true, on la joue
+            if (autoplay) {
+                // Réinitialiser le temps de lecture si le son est déjà terminé
+                if (audioInstances[id].ended) {
+                    audioInstances[id].currentTime = 0;
+                }
+                audioInstances[id].play()
+                    .catch(error => logger.error(`Erreur lors de la lecture de l'audio ${filename}:`, error));
+            }
+            return audioInstances[id];
+        }
+
+        // Limiter le nombre d'instances audio actives
+        const activeInstances = Object.keys(audioInstances);
+        if (activeInstances.length >= AUDIO_CONFIG.MAX_INSTANCES) {
+            // Nettoyer les instances terminées
+            const endedInstances = activeInstances.filter(key => audioInstances[key].ended);
+            if (endedInstances.length > 0) {
+                // Supprimer les instances terminées
+                endedInstances.forEach(key => delete audioInstances[key]);
+            } else {
+                // Si aucune instance terminée, supprimer la plus ancienne (première dans l'objet)
+                const oldestKey = activeInstances[0];
+                audioInstances[oldestKey].pause();
+                delete audioInstances[oldestKey];
+                logger.warn(`Limite audio atteinte (${AUDIO_CONFIG.MAX_INSTANCES}), suppression de ${oldestKey}`);
+            }
+        }
+
+        // Créer une nouvelle instance audio
+        const audio = new Audio(audioPath);
+        audio.volume = volume;
+        audio.loop = loop;
+
+        // Stocker l'instance pour une utilisation ultérieure
+        audioInstances[id] = audio;
+        
+        // Lire l'audio si autoplay est activé
+        if (autoplay) {
+            audio.play()
+                .catch(error => logger.error(`Erreur lors de la lecture de l'audio ${filename}:`, error));
+        }
+        
+        return audio;
+    }
 
 
         onDestroy(() => {
@@ -797,7 +1103,10 @@
             cancelAnimationFrame(animationFrameId);
         }
 
-
+        // Arrêter la boucle d'animation des particules
+        if (particleAnimationId !== null) {
+            cancelAnimationFrame(particleAnimationId);
+        }
 
         // Nettoyage
         const scene = document.querySelector('a-scene');
@@ -815,7 +1124,12 @@
 
 <main>
     <a-scene mindar-image="imageTargetSrc: /chowa.mind;" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false" renderer="logarithmicDepthBuffer: true; colorManagement: true; highPerformance: true; physicallyCorrectLights: true;">
-        <a-assets></a-assets>
+        <a-assets>
+            <!-- Précharger les images de sakura -->
+            {#each sakuraImages as image, index}
+                <img id="sakura-{index+1}" src="{image}" alt="Sakura petal texture {index + 1}" />
+            {/each}
+        </a-assets>
 
         <a-camera position="0 0 0" look-controls="enabled: false" near="0.01" far="10000"></a-camera>
         <a-entity mindar-image-target="targetIndex: 0">
@@ -834,35 +1148,51 @@
         </a-entity>
     </a-scene>
 
-    <PaperModal bind:isOpen={showPaperModal} onClose={() => showPaperModal = false} />
+    <dialog id="paperModal" class="modal" bind:this={paperModal}>
+        <div class="modal-box flex justify-center">
+            <img src="{'/divers/'+selectedPaper+'.png'}" alt="paper collected">
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
 
-    <Modal bind:isOpen={showScandalModal} onClose={() => showScandalModal = false} maxWidth="400px">
-        <div class="flex justify-center flex-col gap-4 items-center">
+    <dialog id="scandalModal" class="modal" bind:this={scandalModal}>
+        <div class="modal-box flex justify-center flex-col gap-4 items-center">
             <img src="/divers/Scandal_hello.jpg" class="w-44 rounded" alt="scandal collected">
             <audio controls>
                 <source src="/divers/departure.mp3" type="audio/mpeg">
             </audio>
         </div>
-    </Modal>
-
-    <Modal bind:isOpen={showCreditsModal} onClose={() => showCreditsModal = false} title="Crédits">
-        <div class="flex items-center justify-center gap-4 mb-4">
-            <img src="/divers/marill.gif" class="w-24 rounded-full" alt="marill">
-            <div>
-                <h3 class="mb-3 text-xl">Damien Marill</h3>
-                <p><a class="link" target="_blank" href="https://marill.dev">https://marill.dev</a></p>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
+    <dialog id="creditsModal" class="modal" bind:this={creditsModal}>
+        <div class="modal-box flex flex-col gap-4">
+            <div class="flex items-center justify-center gap-4">
+                <img src="/divers/marill.gif" class="w-24 rounded-full" alt="marill">
+                <div>
+                    <h3 class="mb-3 text-xl">Damien Marill</h3>
+                    <p><a class="link" target="_blank" href="https://marill.dev">https://marill.dev</a></p>
+                </div>
             </div>
+            <ul>
+                <li>Chanson de <a class="link" href="https://www.instagram.com/cacophonie436/" target="_blank">Laura, aka Gwen</a></li>
+                <li>Sound Effect by <a class="link" target="_blank" href="https://pixabay.com/users/floraphonic-38928062/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=191453">floraphonic</a> from <a class="link" target="_blank" href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=191453">Pixabay</a></li>
+                <li>Co-codé avec Meika, sur <a class="link" href="https://claude.ai">Claude</a></li>
+                <li>Avec le soutien et l'encouragement <a class="link" target="_blank" href="https://www.instagram.com/anieshka__/">d'Anieshka</a></li>
+            </ul>
         </div>
-        <ul>
-            <li>Chanson de <a class="link" href="https://www.instagram.com/cacophonie436/" target="_blank">Laura, aka Gwen</a></li>
-            <li>Sound Effect by <a class="link" target="_blank" href="https://pixabay.com/users/floraphonic-38928062/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=191453">floraphonic</a> from <a class="link" target="_blank" href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=191453">Pixabay</a></li>
-            <li>Co-codé avec Meika, sur <a class="link" href="https://claude.ai">Claude</a></li>
-            <li>Avec le soutien et l'encouragement <a class="link" target="_blank" href="https://www.instagram.com/anieshka__/">d'Anieshka</a></li>
-        </ul>
-    </Modal>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
 
-    <Modal bind:isOpen={showDevModal} onClose={() => showDevModal = false} title="SVG Animation Kawaii" maxWidth="900px">
-        <div class="flex flex-col space-y-4">
+    <dialog id="devModal" class="modal" bind:this={devModal}>
+        <div class="modal-box flex flex-col space-y-4 max-w-3xl">
+            <h2 class="text-xl font-bold">SVG Animation Kawaii</h2>
+            
             <!-- Conteneur pour le code et l'aperçu -->
             <div class="flex flex-col md:flex-row gap-4">
                 <!-- Zone de code avec animation de typage -->
@@ -876,12 +1206,10 @@
                 </div>
             </div>
         </div>
-    </Modal>
-
-    
-
-    <!-- Système de particules -->
-    <ParticleLayer />
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
 </main>
 
 
