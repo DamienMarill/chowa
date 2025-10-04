@@ -145,9 +145,13 @@
     let animationFrameId = $state(null as number | null);
     let particleAnimationId = $state(null as number | null);
 
+<<<<<<< HEAD
     // Variables pour throttling hitbox
     let lastCameraPosition = $state({ x: 0, y: 0, z: 0 });
     let lastCameraRotation = $state({ x: 0, y: 0, z: 0 });
+=======
+
+>>>>>>> fix/click
 
     // Objets réutilisables pour éviter allocations dans tick()
     const tempVector3 = typeof THREE !== 'undefined' ? new THREE.Vector3() : null;
@@ -426,6 +430,7 @@
         window.addEventListener('resize', resizeHandler);
     }
 
+<<<<<<< HEAD
     function startHitboxUpdateLoop() {
         let cameraCache: AFrameElement | null = null;
         
@@ -452,6 +457,20 @@
             }
             animationFrameId = requestAnimationFrame(updateLoop);
         };
+=======
+    // Boucle d'animation pour mettre à jour en continu les hitbox
+    function startHitboxUpdateLoop() {
+        // Fonction pour la mise à jour des hitbox à chaque frame
+        const updateLoop = () => {
+            // Mettre à jour les positions des hitbox
+            updateHitboxes();
+
+            // Continuer la boucle
+            animationFrameId = requestAnimationFrame(updateLoop);
+        };
+
+        // Démarrer la boucle
+>>>>>>> fix/click
         animationFrameId = requestAnimationFrame(updateLoop);
     }
 
