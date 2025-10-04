@@ -133,9 +133,7 @@
     let animationFrameId: number | null = null;
     let particleAnimationId: number | null = null;
 
-    // Variables pour throttling hitbox
-    let lastCameraPosition = { x: 0, y: 0, z: 0 };
-    let lastCameraRotation = { x: 0, y: 0, z: 0 };
+
 
     // Objets réutilisables pour éviter allocations dans tick()
     const tempVector3 = typeof THREE !== 'undefined' ? new THREE.Vector3() : null;
@@ -520,37 +518,18 @@
         window.addEventListener('resize', resizeHandler);
     }
 
-    /**
-     * Boucle d'animation optimisée avec throttling basé sur le mouvement de la caméra
-     * Ne met à jour les hitbox que si la caméra a bougé significativement
-     */
+    // Boucle d'animation pour mettre à jour en continu les hitbox
     function startHitboxUpdateLoop() {
+        // Fonction pour la mise à jour des hitbox à chaque frame
         const updateLoop = () => {
-            const camera = document.querySelector('a-camera');
+            // Mettre à jour les positions des hitbox
+            updateHitboxes();
 
-            if (camera) {
-                const cameraObj = (camera as any).object3D;
-                const pos = cameraObj.position;
-                const rot = cameraObj.rotation;
-
-                // Calculer la distance de mouvement
-                const dx = pos.x - lastCameraPosition.x;
-                const dy = pos.y - lastCameraPosition.y;
-                const dz = pos.z - lastCameraPosition.z;
-                const dr = Math.abs(rot.y - lastCameraRotation.y); // Rotation Y principalement
-
-                const moved = Math.sqrt(dx * dx + dy * dy + dz * dz) > CAMERA_MOVE_THRESHOLD || dr > 0.01;
-
-                if (moved) {
-                    updateHitboxes();
-                    lastCameraPosition = { x: pos.x, y: pos.y, z: pos.z };
-                    lastCameraRotation = { x: rot.x, y: rot.y, z: rot.z };
-                }
-            }
-
+            // Continuer la boucle
             animationFrameId = requestAnimationFrame(updateLoop);
         };
 
+        // Démarrer la boucle
         animationFrameId = requestAnimationFrame(updateLoop);
     }
 
