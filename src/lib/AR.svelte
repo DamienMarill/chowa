@@ -10,6 +10,7 @@
         CONTOUR_CONFIG,
         ASSET_CONFIG,
         CAMERA_CONFIG,
+        AUDIO_CONFIG,
         DEFAULT_PAPERS
     } from './config/constants';
 
@@ -1038,7 +1039,7 @@
     ): HTMLAudioElement {
         // Options par défaut
         const {
-            volume = 1.0,
+            volume = AUDIO_CONFIG.DEFAULT_VOLUME,
             loop = false,
             autoplay = true,
             id = filename
@@ -1060,12 +1061,29 @@
             }
             return audioInstances[id];
         }
-        
-        // Créer une nouvelle instance audio si elle n'existe pas
+
+        // Limiter le nombre d'instances audio actives
+        const activeInstances = Object.keys(audioInstances);
+        if (activeInstances.length >= AUDIO_CONFIG.MAX_INSTANCES) {
+            // Nettoyer les instances terminées
+            const endedInstances = activeInstances.filter(key => audioInstances[key].ended);
+            if (endedInstances.length > 0) {
+                // Supprimer les instances terminées
+                endedInstances.forEach(key => delete audioInstances[key]);
+            } else {
+                // Si aucune instance terminée, supprimer la plus ancienne (première dans l'objet)
+                const oldestKey = activeInstances[0];
+                audioInstances[oldestKey].pause();
+                delete audioInstances[oldestKey];
+                logger.warn(`Limite audio atteinte (${AUDIO_CONFIG.MAX_INSTANCES}), suppression de ${oldestKey}`);
+            }
+        }
+
+        // Créer une nouvelle instance audio
         const audio = new Audio(audioPath);
         audio.volume = volume;
         audio.loop = loop;
-        
+
         // Stocker l'instance pour une utilisation ultérieure
         audioInstances[id] = audio;
         
