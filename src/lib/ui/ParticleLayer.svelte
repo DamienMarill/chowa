@@ -13,10 +13,27 @@
 
     // Images sakura disponibles
     const sakuraImages = [
-        '/divers/sakura1.png',
-        '/divers/sakura2.png',
-        '/divers/sakura3.png',
-        '/divers/sakura4.png'
+        '/sakuras/petal1.png',
+        '/sakuras/petal2.png',
+        '/sakuras/petal3.png',
+        '/sakuras/petal4.png',
+        '/sakuras/petal5.png',
+        '/sakuras/petal6.png',
+        '/sakuras/petal7.png',
+        '/sakuras/petal8.png',
+        '/sakuras/petal9.png',
+        '/sakuras/petal10.png',
+        '/sakuras/petal11.png',
+        '/sakuras/petal12.png',
+        '/sakuras/petal13.png',
+        '/sakuras/petal14.png',
+        '/sakuras/sakura1.png',
+        '/sakuras/sakura2.png',
+        '/sakuras/sakura3.png',
+        '/sakuras/sakura4.png',
+        '/sakuras/sakura5.png',
+        '/sakuras/sakura6.png',
+        '/sakuras/sakura7.png'
     ];
 
     function getRandomSakuraImage(): string {
@@ -53,12 +70,8 @@
         });
     }
 
-    let lastTimestamp = 0;
-
-    function animate(timestamp: number) {
-        const deltaTime = lastTimestamp ? timestamp - lastTimestamp : 16;
-        lastTimestamp = timestamp;
-        
+    function animate() {
+        const deltaTime = 16; // ~60 FPS
         updateParticles(deltaTime);
 
         const animationId = requestAnimationFrame(animate);
@@ -68,7 +81,7 @@
     onMount(() => {
         initParticles();
         particleState.setAnimating(true);
-        requestAnimationFrame(animate);
+        animate();
     });
 
     onDestroy(() => {
