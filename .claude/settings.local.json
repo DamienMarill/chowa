@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__serena__list_dir",
+      "mcp__serena__activate_project",
+      "mcp__serena__check_onboarding_performed",
+      "mcp__context7__resolve-library-id",
+      "WebSearch",
+      "mcp__context7__get-library-docs",
+      "WebFetch(domain:hiukim.github.io)",
+      "mcp__serena__write_memory",
+      "Bash(pnpm run check:*)",
+      "Bash(pnpm run:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "mcp__sequential__sequentialthinking",
+      "mcp__serena__get_symbols_overview",
+      "Bash(git reset:*)",
+      "mcp__serena__get_current_config",
+      "mcp__serena__list_memories",
+      "mcp__serena__read_memory",
+      "Bash(cloc:*)",
+      "mcp__serena__search_for_pattern",
+      "mcp__serena__find_file",
+      "mcp__serena__replace_regex",
+      "mcp__serena__read_file"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

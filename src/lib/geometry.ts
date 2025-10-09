@@ -73,17 +73,23 @@ export function simplifyPolygon(points: Point[], tolerance: number): Point[] {
     tol: number
   ): Point[] {
     if (endIndex <= startIndex + 1) {
-      return [pts[startIndex]];
+      const point = pts[startIndex];
+      return point ? [point] : [];
     }
 
     let maxDistance = 0;
     let maxIndex = 0;
 
     for (let i = startIndex + 1; i < endIndex; i++) {
-      const distance = perpendicularDistance(pts[i], pts[startIndex], pts[endIndex]);
-      if (distance > maxDistance) {
-        maxDistance = distance;
-        maxIndex = i;
+      const point = pts[i];
+      const startPoint = pts[startIndex];
+      const endPoint = pts[endIndex];
+      if (point && startPoint && endPoint) {
+        const distance = perpendicularDistance(point, startPoint, endPoint);
+        if (distance > maxDistance) {
+          maxDistance = distance;
+          maxIndex = i;
+        }
       }
     }
 
@@ -93,7 +99,11 @@ export function simplifyPolygon(points: Point[], tolerance: number): Point[] {
       const right = douglasPeucker(pts, maxIndex, endIndex, tol);
       result = [...left, ...right];
     } else {
-      result = [pts[startIndex], pts[endIndex]];
+      const startPoint = pts[startIndex];
+      const endPoint = pts[endIndex];
+      if (startPoint && endPoint) {
+        result = [startPoint, endPoint];
+      }
     }
 
     return result;
@@ -101,11 +111,11 @@ export function simplifyPolygon(points: Point[], tolerance: number): Point[] {
 
   const result = douglasPeucker(points, 0, points.length - 1, tolerance);
 
-  if (
-    result[result.length - 1].x !== points[points.length - 1].x ||
-    result[result.length - 1].y !== points[points.length - 1].y
-  ) {
-    result.push(points[points.length - 1]);
+  const lastResult = result[result.length - 1];
+  const lastPoint = points[points.length - 1];
+
+  if (lastResult && lastPoint && (lastResult.x !== lastPoint.x || lastResult.y !== lastPoint.y)) {
+    result.push(lastPoint);
   }
 
   return result;
