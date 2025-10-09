@@ -35,6 +35,7 @@
     let showScandalModal = $state(false);
     let showCreditsModal = $state(false);
     let showDevModal = $state(false);
+    let showChowaFoundModal = $state(false);
 
     // Variables pour l'animation SVG
     let codeContainer = $state(undefined as HTMLElement | undefined);
@@ -202,6 +203,15 @@
     <!-- Effet brillant -->
     <path d="M180 100 L190 90 M185 85 L195 95" stroke="#fffae5" stroke-width="3" stroke-linecap="round"/>
 </svg>`;
+
+    let hasFound = false;
+
+    function foundChowa(){
+        if (!hasFound){
+            showChowaFoundModal = true;
+            hasFound = true;
+        }
+    }
 
     function startSvgCodeAnimation() {
         if (codeContainer) codeContainer.textContent = '';
@@ -726,7 +736,21 @@
 </script>
 
 <main>
-    <a-scene mindar-image="imageTargetSrc: /chowa.mind;" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false" renderer="logarithmicDepthBuffer: true; colorManagement: true; highPerformance: true; physicallyCorrectLights: true; antialias: false; powerPreference: high-performance;" stats="false">
+    <div id="scanOverlay" class="hidden">
+        <div class="mindar-ui-overlay mindar-ui-scanning">
+            <div class="scanning">
+                <div class="inner">
+                    <div class="flex items-center justify-center w-full h-full opacity-60 saturate-50">
+                        <img src="/chowa_little.jpg" class="w-full"/>
+                    </div>
+                    <div class="scanline">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <a-scene mindar-image="imageTargetSrc: /chowa.mind; uiScanning: #scanOverlay" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: true" renderer="logarithmicDepthBuffer: true; colorManagement: true; highPerformance: true; physicallyCorrectLights: true; antialias: false; powerPreference: high-performance;" stats="false">
         <a-assets>
             {#each sakuraImages as image, index}
                 <img id="sakura-{index+1}" src="{image}" alt="Sakura petal texture {index + 1}" />
@@ -734,7 +758,7 @@
         </a-assets>
 
         <a-camera position="0 0 0" look-controls="enabled: false" near="0.01" far="10000"></a-camera>
-        <a-entity mindar-image-target="targetIndex: 0">
+        <a-entity ontargetFound={foundChowa} mindar-image-target="targetIndex: 0">
             {#each images as image}
                 <a-image src={`/track_assets/${image.name}.png`} alt="frame"
                          visible="true"
@@ -784,6 +808,22 @@
                 </div>
                 <div class="flex-1 flex items-center justify-center p-4 bg-base-200 rounded-lg">
                     <div bind:this={svgContainer} class="w-full h-full flex items-center justify-center"></div>
+                </div>
+            </div>
+        </div>
+    </Modal>
+
+    <Modal bind:isOpen={showChowaFoundModal} onClose={() => showChowaFoundModal = false} title="intéragissez !" maxWidth="900px">
+        <div class="flex flex-col space-y-4">
+            <div class="flex flex-col gap-4">
+                <div>
+                    <div class="w-52 mx-auto relative">
+                        <img src="/divers/mimiqui.png" class="w-52 mx-auto" alt="Chowa found"/>
+                        <span class="text-[6rem] absolute -rotate-45 bottom-0 left-28">👆</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <p class="text-lg">Vous pouvez appuyer sur les éléments du dessin pour que des choses ce passent.</p>
                 </div>
             </div>
         </div>
