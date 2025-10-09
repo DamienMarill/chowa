@@ -51,9 +51,16 @@ export const AUDIO_CONFIG = {
     DEFAULT_VOLUME: 1.0
 } as const;
 
-// Papers par défaut
+// Papers collectés par défaut (compteur commence à 0)
 export const DEFAULT_PAPERS = {
-    angular: 3,
-    laravel: 3,
-    tailwind: 2
+    angular: 0,
+    laravel: 0,
+    tailwind: 0
+} as const;
+
+// Nombre total de papers disponibles par framework
+export const TOTAL_PAPERS = {
+    angular: 3,  // paper_2, paper_6, paper_7
+    laravel: 3,  // paper_3, paper_5, paper_8
+    tailwind: 2  // paper_1, paper_4
 } as const;

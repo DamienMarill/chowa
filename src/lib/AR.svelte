@@ -9,7 +9,8 @@
         PARTICLE_CONFIG,
         CONTOUR_CONFIG,
         ASSET_CONFIG,
-        CAMERA_CONFIG
+        CAMERA_CONFIG,
+        TOTAL_PAPERS
     } from './config/constants';
 
     // Stores
@@ -273,7 +274,12 @@
             element?.setAttribute('visible', 'false');
             gameState.collectPaper(framework);
             audioManager.play('paper.mp3');
-            if (gameState.papers[framework] === 0){
+
+            // Vérifier si on vient de compléter tous les papiers de ce framework
+            const totalPapers = TOTAL_PAPERS[framework as keyof typeof TOTAL_PAPERS];
+            const collectedCount = gameState.papers[framework];
+
+            if (collectedCount === totalPapers){
                 gameState.selectPaper(framework);
                 showPaperModal = true;
             }
