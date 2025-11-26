@@ -75,43 +75,54 @@ export class ParticlePool {
             x: 0,
             y: 0,
             z: 0,
+            rotationX: 0,
+            rotationY: 0,
+            rotationZ: 0,
             scale: 1,
-            opacity: 1,
             speedY: 0,
             speedX: 0,
+            speedRotationX: 0,
+            speedRotationY: 0,
+            speedRotationZ: 0,
             swayOffset: 0,
             swayFrequency: 1,
+            swayAmplitude: 0,
             image: '',
             element: null
         };
     }
 
     /**
-     * Réinitialiser une particule avec des valeurs aléatoires
+     * Réinitialiser une particule avec des valeurs aléatoires pour A-Frame
+     * @param possibleZValues - Valeurs Z possibles pour les particules
      */
-    private resetParticle(particle: Particle): void {
-        // Position initiale aléatoire
-        particle.x = Math.random() * window.innerWidth;
-        particle.y = -50; // Au-dessus de l'écran
-        particle.z = Math.random() * 0.3; // Profondeur aléatoire
+    resetParticle(particle: Particle, possibleZValues: number[] = [0.05, 0.15, 0.25, 0.35]): void {
+        // Position initiale aléatoire dans l'espace 3D AR
+        particle.x = (Math.random() * 2 - 1.5) * 1.2;
+        particle.y = 1.2 + Math.random() * 0.5;
+        particle.z = possibleZValues[Math.floor(Math.random() * possibleZValues.length)];
+
+        // Rotations initiales aléatoires
+        particle.rotationX = Math.random() * 360;
+        particle.rotationY = Math.random() * 360;
+        particle.rotationZ = Math.random() * 360;
 
         // Échelle aléatoire
-        particle.scale = PARTICLE_CONFIG.SCALE.MIN +
-            Math.random() * (PARTICLE_CONFIG.SCALE.MAX - PARTICLE_CONFIG.SCALE.MIN);
-
-        // Opacité
-        particle.opacity = 1;
+        particle.scale = 0.01 + Math.random() * 0.09;
 
         // Vitesses aléatoires
-        particle.speedY = PARTICLE_CONFIG.SPEED.Y.MIN +
-            Math.random() * (PARTICLE_CONFIG.SPEED.Y.MAX - PARTICLE_CONFIG.SPEED.Y.MIN);
-        particle.speedX = PARTICLE_CONFIG.SPEED.X.MIN +
-            Math.random() * (PARTICLE_CONFIG.SPEED.X.MAX - PARTICLE_CONFIG.SPEED.X.MIN);
+        particle.speedY = 0.0005 + Math.random() * 0.0008;
+        particle.speedX = 0.0002 + Math.random() * 0.0003;
+
+        // Vitesses de rotation
+        particle.speedRotationX = (Math.random() - 0.5) * 0.2;
+        particle.speedRotationY = (Math.random() - 0.5) * 0.2;
+        particle.speedRotationZ = (Math.random() - 0.5) * 0.2;
 
         // Balancement
+        particle.swayFrequency = 0.2 + Math.random() * 0.4;
+        particle.swayAmplitude = 0.0005 + Math.random() * 0.001;
         particle.swayOffset = Math.random() * Math.PI * 2;
-        particle.swayFrequency = PARTICLE_CONFIG.SWAY.FREQUENCY_MIN +
-            Math.random() * (PARTICLE_CONFIG.SWAY.FREQUENCY_MAX - PARTICLE_CONFIG.SWAY.FREQUENCY_MIN);
 
         // Element sera assigné plus tard
         particle.element = null;

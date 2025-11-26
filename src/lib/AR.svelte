@@ -26,6 +26,9 @@
     import DevModal from './ui/DevModal.svelte';
     import ChowaFoundModal from './ui/ChowaFoundModal.svelte';
 
+    // Composants systèmes
+    import ParticleSystem from './components/particles/ParticleSystem.svelte';
+
     let debug = $state(DEBUG);
 
     // Logger conditionnel basé sur DEBUG
@@ -44,34 +47,15 @@
     // Référence au composant DevModal
     let devModalComponent: DevModal | undefined = $state(undefined);
 
+    // Référence à l'entité AR pour le système de particules
+    let arEntity: Element | null = null;
+
     // Extension de l'interface trackAsset pour inclure les handlers de clic
     interface TrackAsset {
         name: string;
         z: number;
         ratio?: number;
         clickHandler?: () => void;
-    }
-
-    // Interface pour les particules
-    interface Particle {
-        id: number;
-        x: number;
-        y: number;
-        z: number;
-        rotationX: number;
-        rotationY: number;
-        rotationZ: number;
-        scale: number;
-        speedY: number;
-        speedX: number; // Ajout d'une vitesse horizontale pour le mouvement vers la droite
-        speedRotationX: number;
-        speedRotationY: number;
-        speedRotationZ: number;
-        swayFrequency: number;
-        swayAmplitude: number;
-        swayOffset: number;
-        element: HTMLElement | null;
-        image: string; // Pour stocker le chemin de l'image utilisée
     }
 
     let assetRatio = $state(ASSET_CONFIG.RATIO_DEFAULT);
@@ -111,11 +95,14 @@
         }, 150); // Debounce de 150ms
     };
 
-    // Variables pour le système de particules avec pooling
-    let particles = $state([] as Particle[]);
-    let particlePool = $state([] as Particle[]);
-    let particleContainer = $state(null as HTMLElement | null);
-    // Liste des différentes images de pétales disponibles
+    // Variable pour la boucle d'animation des hitbox
+    let animationFrameId = $state(null as number | null);
+
+    // Objets réutilisables pour éviter allocations dans tick()
+    const tempVector3 = typeof THREE !== 'undefined' ? new THREE.Vector3() : null;
+    const screenPointsCache: {x: number, y: number}[] = [];
+
+    // Liste des images de pétales (pour les assets)
     let sakuraImages = [
         '/sakuras/sakura1.png',
         '/sakuras/sakura2.png',
@@ -139,18 +126,6 @@
         '/sakuras/petal13.png',
         '/sakuras/petal14.png',
     ];
-    let lastParticleId = $state(0);
-
-    // Valeurs Z possibles pour les particules (intercalées entre les images)
-    let possibleZValues = [0.05, 0.15, 0.25, 0.35];
-
-    // Variable pour la boucle d'animation
-    let animationFrameId = $state(null as number | null);
-    let particleAnimationId = $state(null as number | null);
-
-    // Objets réutilisables pour éviter allocations dans tick()
-    const tempVector3 = typeof THREE !== 'undefined' ? new THREE.Vector3() : null;
-    const screenPointsCache: {x: number, y: number}[] = [];
 
     // Tableau d'images
     const images: TrackAsset[] = [
@@ -200,7 +175,9 @@
                     camera.setAttribute('far', '10000');
                     camera.setAttribute('near', '0.01');
                 }
-                initParticleSystem();
+
+                // Capturer la référence à l'entité AR
+                arEntity = document.querySelector('a-entity[mindar-image-target]');
             });
         }
 
@@ -240,134 +217,6 @@
         let sounds = ['book1.mp3', 'book2.mp3', 'book3.mp3'];
         let randomSound = sounds[Math.floor(Math.random() * sounds.length)];
         audioManager.play(randomSound);
-    }
-
-    function initParticleSystem() {
-        const arEntity = document.querySelector('a-entity[mindar-image-target]');
-        if (!arEntity) {
-            logger.error('AR entity not found for particle system');
-            return;
-        }
-
-        particleContainer = document.createElement('a-entity');
-        particleContainer.setAttribute('id', 'particle-container');
-        arEntity.appendChild(particleContainer);
-
-        generateParticles();
-        startParticleAnimation();
-    }
-
-    function getRandomSakuraImage(): string {
-        const randomIndex = Math.floor(Math.random() * sakuraImages.length);
-        return sakuraImages[randomIndex];
-    }
-
-    function acquireParticle(): Particle {
-        let particle = particlePool.pop();
-
-        if (!particle) {
-            lastParticleId++;
-            const image = getRandomSakuraImage();
-
-            particle = {
-                id: lastParticleId,
-                x: 0, y: 0, z: 0,
-                rotationX: 0, rotationY: 0, rotationZ: 0,
-                scale: 0, speedY: 0, speedX: 0,
-                speedRotationX: 0, speedRotationY: 0, speedRotationZ: 0,
-                swayFrequency: 0, swayAmplitude: 0, swayOffset: 0,
-                element: null, image: image
-            };
-
-            if (particleContainer) {
-                const el = document.createElement('a-plane');
-                el.setAttribute('id', `particle-${particle.id}`);
-                el.setAttribute('src', particle.image);
-                el.setAttribute('width', '1');
-                el.setAttribute('height', '1');
-                el.setAttribute('material', 'transparent: true; alphaTest: 0.5; depthTest: true; depthWrite: false;');
-                particleContainer.appendChild(el);
-                particle.element = el;
-            }
-        }
-
-        particle.x = (Math.random() * 2 - 1.5) * 1.2;
-        particle.y = 1.2 + Math.random() * 0.5;
-        particle.z = possibleZValues[Math.floor(Math.random() * possibleZValues.length)];
-        particle.rotationX = Math.random() * 360;
-        particle.rotationY = Math.random() * 360;
-        particle.rotationZ = Math.random() * 360;
-        particle.scale = 0.01 + Math.random() * 0.09;
-        particle.speedY = 0.0005 + Math.random() * 0.0008;
-        particle.speedX = 0.0002 + Math.random() * 0.0003;
-        particle.speedRotationX = (Math.random() - 0.5) * 0.2;
-        particle.speedRotationY = (Math.random() - 0.5) * 0.2;
-        particle.speedRotationZ = (Math.random() - 0.5) * 0.2;
-        particle.swayFrequency = 0.2 + Math.random() * 0.4;
-        particle.swayAmplitude = 0.0005 + Math.random() * 0.001;
-        particle.swayOffset = Math.random() * Math.PI * 2;
-
-        if (particle.element) {
-            particle.element.setAttribute('scale', `${particle.scale} ${particle.scale} ${particle.scale}`);
-            particle.element.setAttribute('position', `${particle.x} ${particle.y} ${particle.z}`);
-            particle.element.setAttribute('rotation', `${particle.rotationX} ${particle.rotationY} ${particle.rotationZ}`);
-        }
-
-        return particle;
-    }
-
-    function releaseParticle(particle: Particle): void {
-        particlePool.push(particle);
-    }
-
-    function generateParticles() {
-        particles = [];
-        for (let i = 0; i < PARTICLE_CONFIG.COUNT; i++) {
-            const particle = acquireParticle();
-            particle.y = -1 + Math.random() * 3;
-            particles.push(particle);
-        }
-    }
-
-    function updateParticles(deltaTime: number) {
-        for (let i = 0; i < particles.length; i++) {
-            const particle = particles[i];
-            particle.y -= particle.speedY * deltaTime;
-            particle.x += particle.speedX * deltaTime;
-            const swayX = Math.sin((Date.now() * 0.001 * particle.swayFrequency) + particle.swayOffset) * particle.swayAmplitude * deltaTime;
-            particle.x += swayX;
-            particle.rotationX += particle.speedRotationX * deltaTime;
-            particle.rotationY += particle.speedRotationY * deltaTime;
-            particle.rotationZ += particle.speedRotationZ * deltaTime;
-
-            if (particle.y < -1.5 || particle.x > 1.5) {
-                releaseParticle(particle);
-                const newParticle = acquireParticle();
-                particles[i] = newParticle;
-                if (newParticle.element) {
-                    const newImage = getRandomSakuraImage();
-                    newParticle.image = newImage;
-                    newParticle.element.setAttribute('src', newImage);
-                }
-            }
-
-            if (particle.element) {
-                particle.element.setAttribute('position', `${particle.x} ${particle.y} ${particle.z}`);
-                particle.element.setAttribute('rotation', `${particle.rotationX} ${particle.rotationY} ${particle.rotationZ}`);
-            }
-        }
-    }
-
-    function startParticleAnimation() {
-        let lastTime = performance.now();
-        const animateParticles = () => {
-            const currentTime = performance.now();
-            const deltaTime = currentTime - lastTime;
-            lastTime = currentTime;
-            updateParticles(deltaTime);
-            particleAnimationId = requestAnimationFrame(animateParticles);
-        };
-        particleAnimationId = requestAnimationFrame(animateParticles);
     }
 
     function setupClickDetection() {
@@ -668,11 +517,6 @@
             cancelAnimationFrame(animationFrameId);
         }
 
-        // Arrêter la boucle d'animation des particules
-        if (particleAnimationId !== null) {
-            cancelAnimationFrame(particleAnimationId);
-        }
-
         // Nettoyer le timeout de resize
         if (resizeTimeout) {
             clearTimeout(resizeTimeout);
@@ -724,6 +568,10 @@
         </a-entity>
     </a-scene>
 
+    <!-- Système de particules -->
+    <ParticleSystem bind:arEntity={arEntity} />
+
+    <!-- Modals -->
     <PaperModal bind:isOpen={showPaperModal} onClose={() => showPaperModal = false} />
     <ScandalModal bind:isOpen={showScandalModal} onClose={() => showScandalModal = false} />
     <CreditsModal bind:isOpen={showCreditsModal} onClose={() => showCreditsModal = false} />
