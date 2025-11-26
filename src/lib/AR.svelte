@@ -21,7 +21,10 @@
 
     // Composants UI
     import PaperModal from './ui/PaperModal.svelte';
-    import Modal from './ui/Modal.svelte';
+    import ScandalModal from './ui/ScandalModal.svelte';
+    import CreditsModal from './ui/CreditsModal.svelte';
+    import DevModal from './ui/DevModal.svelte';
+    import ChowaFoundModal from './ui/ChowaFoundModal.svelte';
 
     let debug = $state(DEBUG);
 
@@ -38,10 +41,8 @@
     let showDevModal = $state(false);
     let showChowaFoundModal = $state(false);
 
-    // Variables pour l'animation SVG
-    let codeContainer = $state(undefined as HTMLElement | undefined);
-    let svgContainer = $state(undefined as HTMLElement | undefined);
-    let typingTimeout = $state(undefined as NodeJS.Timeout | undefined);
+    // Référence au composant DevModal
+    let devModalComponent: DevModal | undefined = $state(undefined);
 
     // Extension de l'interface trackAsset pour inclure les handlers de clic
     interface TrackAsset {
@@ -156,7 +157,7 @@
         { name: 'background', z: 0, ratio: 1.55 },
         { name: "pc", z: 0.2, clickHandler: () => {
             showDevModal = true;
-            setTimeout(startSvgCodeAnimation, 300);
+            setTimeout(() => devModalComponent?.startAnimation(), 300);
         }},
         { name: 'bibi', z: 0.3, clickHandler: () => audioManager.play('cafe.mp3', {volume: 0.3}) },
         { name: 'whale', z: 0.3, clickHandler: () => audioManager.play('trivia.mp3')},
@@ -177,34 +178,6 @@
         { name: 'paper_5', z: 0.6, clickHandler: () => collectPaper('paper_5', 'laravel') },
     ];
 
-    const svgCode = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
-    <!-- Corps principal -->
-    <ellipse cx="200" cy="220" rx="100" ry="80" fill="#fff4d6"/>
-    <!-- Aile -->
-    <path d="M220 200 C250 180 240 160 210 190" fill="#ffeba3" stroke="#ffeba3" stroke-width="15" stroke-linecap="round"/>
-    <!-- Petite queue -->
-    <path d="M290 200 C310 220 300 240 280 230" fill="#ffeba3"/>
-    <!-- Tête -->
-    <circle cx="140" cy="160" r="60" fill="#fff4d6"/>
-    <!-- Bec -->
-    <path d="M100 160 L80 165 L100 170 Z" fill="#ffb347"/>
-    <!-- Œil -->
-    <circle cx="120" cy="150" r="10" fill="#333"/>
-    <!-- Reflet de l'œil -->
-    <circle cx="125" cy="145" r="3" fill="white"/>
-    <!-- Joue rose -->
-    <circle cx="130" cy="165" r="10" fill="#ffcece" opacity="0.6"/>
-    <!-- Pattes -->
-    <path d="M180 290 L200 310" stroke="#ffb347" stroke-width="8" stroke-linecap="round"/>
-    <path d="M200 290 L220 310" stroke="#ffb347" stroke-width="8" stroke-linecap="round"/>
-    <!-- Petites bulles décoratives -->
-    <circle cx="90" cy="120" r="4" fill="#fff4d6"/>
-    <circle cx="100" cy="100" r="3" fill="#fff4d6"/>
-    <circle cx="80" cy="140" r="3" fill="#fff4d6"/>
-    <!-- Effet brillant -->
-    <path d="M180 100 L190 90 M185 85 L195 95" stroke="#fffae5" stroke-width="3" stroke-linecap="round"/>
-</svg>`;
-
     let hasFound = false;
 
     function foundChowa(){
@@ -212,29 +185,6 @@
             showChowaFoundModal = true;
             hasFound = true;
         }
-    }
-
-    function startSvgCodeAnimation() {
-        if (codeContainer) codeContainer.textContent = '';
-        if (svgContainer) svgContainer.innerHTML = '';
-        if (typingTimeout) clearTimeout(typingTimeout);
-
-        let charIndex = 0;
-        function typeNextChar() {
-            if (charIndex < svgCode.length && codeContainer) {
-                codeContainer.textContent += svgCode.charAt(charIndex);
-                codeContainer.scrollTop = codeContainer.scrollHeight;
-                charIndex++;
-                typingTimeout = setTimeout(typeNextChar, TYPING_SPEED);
-            } else if (svgContainer) {
-                svgContainer.innerHTML = svgCode;
-                const svgElement = svgContainer.querySelector('svg');
-                if (svgElement) {
-                    svgElement.classList.add('appear-animation');
-                }
-            }
-        }
-        typeNextChar();
     }
 
     onMount(async () => {
@@ -728,11 +678,6 @@
             clearTimeout(resizeTimeout);
         }
 
-        // Nettoyer le timeout de typage
-        if (typingTimeout) {
-            clearTimeout(typingTimeout);
-        }
-
         // Nettoyage des event listeners
         const scene = document.querySelector('a-scene');
         if (scene) scene.removeEventListener('click', handleSceneClick as EventListener);
@@ -780,60 +725,10 @@
     </a-scene>
 
     <PaperModal bind:isOpen={showPaperModal} onClose={() => showPaperModal = false} />
-
-    <Modal bind:isOpen={showScandalModal} onClose={() => showScandalModal = false} maxWidth="400px">
-        <div class="flex justify-center flex-col gap-4 items-center">
-            <img src="/divers/Scandal_hello.jpg" class="w-44 rounded" alt="scandal collected">
-            <audio controls>
-                <source src="/divers/departure.mp3" type="audio/mpeg">
-            </audio>
-        </div>
-    </Modal>
-
-    <Modal bind:isOpen={showCreditsModal} onClose={() => showCreditsModal = false} title="Crédits">
-        <div class="flex items-center justify-center gap-4 mb-4">
-            <img src="/divers/marill.gif" class="w-24 rounded-full" alt="marill">
-            <div>
-                <h3 class="mb-3 text-xl">Damien Marill</h3>
-                <p><a class="link" target="_blank" href="https://marill.dev">https://marill.dev</a></p>
-            </div>
-        </div>
-        <ul>
-            <li>Chanson de <a class="link" href="https://www.instagram.com/cacophonie436/" target="_blank">Laura, aka Gwen</a></li>
-            <li>Sound Effect by <a class="link" target="_blank" href="https://pixabay.com/users/floraphonic-38928062/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=191453">floraphonic</a> from <a class="link" target="_blank" href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=191453">Pixabay</a></li>
-            <li>Co-codé avec Meika, sur <a class="link" href="https://claude.ai">Claude</a></li>
-            <li>Avec le soutien et l'encouragement <a class="link" target="_blank" href="https://www.instagram.com/anieshka__/">d'Anieshka</a></li>
-        </ul>
-    </Modal>
-
-    <Modal bind:isOpen={showDevModal} onClose={() => showDevModal = false} title="SVG Animation Kawaii" maxWidth="900px">
-        <div class="flex flex-col space-y-4">
-            <div class="flex flex-col md:flex-row gap-4">
-                <div class="mockup-code bg-base-200 text-base-content flex-1 overflow-x-auto text-sm">
-                    <pre><code bind:this={codeContainer}></code></pre>
-                </div>
-                <div class="flex-1 flex items-center justify-center p-4 bg-base-200 rounded-lg">
-                    <div bind:this={svgContainer} class="w-full h-full flex items-center justify-center"></div>
-                </div>
-            </div>
-        </div>
-    </Modal>
-
-    <Modal bind:isOpen={showChowaFoundModal} onClose={() => showChowaFoundModal = false} title="intéragissez !" maxWidth="900px">
-        <div class="flex flex-col space-y-4">
-            <div class="flex flex-col gap-4">
-                <div>
-                    <div class="w-52 mx-auto relative">
-                        <img src="/divers/mimiqui.png" class="w-52 mx-auto" alt="Chowa found"/>
-                        <span class="text-[6rem] absolute -rotate-45 bottom-0 left-28">👆</span>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <p class="text-lg">Vous pouvez appuyer sur les éléments du dessin pour que des choses ce passent.</p>
-                </div>
-            </div>
-        </div>
-    </Modal>
+    <ScandalModal bind:isOpen={showScandalModal} onClose={() => showScandalModal = false} />
+    <CreditsModal bind:isOpen={showCreditsModal} onClose={() => showCreditsModal = false} />
+    <DevModal bind:this={devModalComponent} bind:isOpen={showDevModal} onClose={() => showDevModal = false} />
+    <ChowaFoundModal bind:isOpen={showChowaFoundModal} onClose={() => showChowaFoundModal = false} />
 </main>
 
 <style>
