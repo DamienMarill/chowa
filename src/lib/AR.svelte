@@ -1,5 +1,4 @@
 <script lang="ts">
-    import { onMount, onDestroy } from 'svelte';
     import 'aframe';
     import 'mind-ar/dist/mindar-image-aframe.prod.js';
     import {
@@ -24,6 +23,9 @@
     // Composants systèmes
     import ParticleSystem from './components/particles/ParticleSystem.svelte';
     import HitboxSystem from './components/hitbox/HitboxSystem.svelte';
+
+    // Composants AR
+    import ARScene from './components/ar/ARScene.svelte';
 
     let debug = $state(DEBUG);
 
@@ -56,13 +58,6 @@
 
     let assetRatio = $state(ASSET_CONFIG.RATIO_DEFAULT);
 
-    function getAssetWidth(ratio: number){
-        return ratio;
-    }
-
-    function getAssetHeight(ratio: number){
-        return ASSET_CONFIG.A4_RATIO * ratio;
-    }
 
     // Liste des images de pétales (pour les assets)
     let sakuraImages = [
@@ -124,25 +119,12 @@
         }
     }
 
-    onMount(async () => {
-        const sceneEl = document.querySelector('a-scene');
-        if (sceneEl) {
-            sceneEl.addEventListener('loaded', () => {
-                const renderer = (sceneEl as AFrameElement).renderer;
-                if (renderer) {
-                    renderer.autoClear = false;
-                }
-                const camera = document.querySelector('a-camera');
-                if (camera) {
-                    camera.setAttribute('far', '10000');
-                    camera.setAttribute('near', '0.01');
-                }
-
-                // Capturer la référence à l'entité AR
-                arEntity = document.querySelector('a-entity[mindar-image-target]');
-            });
-        }
-    });
+    /**
+     * Callback quand la scène AR est chargée
+     */
+    function handleSceneLoaded(entity: Element | null) {
+        arEntity = entity;
+    }
 
     function collectPaper(name: string, framework: string){
         let element = document.querySelector('.'+name);
@@ -172,10 +154,6 @@
     }
 
     const audioManager = new AudioManager();
-
-    onDestroy(() => {
-        // Cleanup sera géré par les composants
-    });
 </script>
 
 <main>
@@ -193,28 +171,13 @@
         </div>
     </div>
 
-    <a-scene mindar-image="imageTargetSrc: /chowa.mind; uiScanning: #scanOverlay" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: true" renderer="logarithmicDepthBuffer: true; colorManagement: true; highPerformance: true; physicallyCorrectLights: true; antialias: false; powerPreference: high-performance;" stats="false">
-        <a-assets>
-            {#each sakuraImages as image, index}
-                <img id="sakura-{index+1}" src="{image}" alt="Sakura petal texture {index + 1}" />
-            {/each}
-        </a-assets>
-
-        <a-camera position="0 0 0" look-controls="enabled: false" near="0.01" far="10000"></a-camera>
-        <a-entity ontargetFound={foundChowa} mindar-image-target="targetIndex: 0">
-            {#each images as image}
-                <a-image src={`/track_assets/${image.name}.png`} alt="frame"
-                         visible="true"
-                         position={`0 0 ${image.z}`}
-                         class={image.name}
-                         height={getAssetHeight(image.ratio ?? assetRatio)}
-                         width={getAssetWidth(image.ratio ?? 1)} rotation="0 0 0"
-                         material="transparent: true; alphaTest: 0.5; depthTest: false; depthWrite: false; opacity: 1"
-                         loading="lazy"
-                ></a-image>
-            {/each}
-        </a-entity>
-    </a-scene>
+    <ARScene
+        {images}
+        {sakuraImages}
+        {assetRatio}
+        onTargetFound={foundChowa}
+        onSceneLoaded={handleSceneLoaded}
+    />
 
     <!-- Systèmes -->
     <ParticleSystem bind:arEntity={arEntity} />
