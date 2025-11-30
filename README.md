@@ -1,68 +1,45 @@
 # Chowa 🍃
 
 ![MIT License](https://img.shields.io/badge/license-MIT-green.svg)
-![Svelte](https://img.shields.io/badge/built%20with-Svelte-orange)
+![Svelte 5](https://img.shields.io/badge/Svelte-5-orange)
 ![Vite](https://img.shields.io/badge/vite-%E2%9C%A8-purple)
+![MindAR](https://img.shields.io/badge/AR-MindAR-blue)
 
-Chowa est une petite application de réalité augmentée construite avec Svelte, Vite, Tailwind et A-Frame. Elle permet d'afficher des scènes AR légères où des pétales de sakura tombent doucement au fil de la collection d'éléments.
+**Chowa (調和)** est une expérience de Réalité Augmentée (AR) immersive sur le web. Elle explore l'harmonie entre le réel et le virtuel à travers une interface élégante et des interactions poétiques.
 
 ![Capture](public/track_assets/girl.png)
 
-## ✨ Fonctionnalités
+## 📚 Documentation
 
-- ✨ Animation de particules de sakura
-- 🌸 Suivi d'images grâce à MindAR
-- 🎧 Lecture de sons et d'extraits vocaux
-- 💡 Mode développement avec code Svelte modulaire
+Une documentation complète est disponible dans le dossier [`docs/`](./docs/) :
 
-## Prérequis
+- 📖 **[Vue d'ensemble](./docs/overview.md)** : Introduction et objectifs du projet.
+- 🏗️ **[Architecture](./docs/architecture.md)** : Structure technique, systèmes (AR, Particules, Hitbox) et flux de données.
+- ⚙️ **[Installation & Setup](./docs/setup.md)** : Guide pour installer et lancer le projet localement.
+- ✨ **[Fonctionnalités](./docs/features.md)** : Détail des fonctionnalités (Image Tracking, Audio, Collection).
+- 🧩 **[Composants API](./docs/components.md)** : Documentation technique des composants principaux.
+- 🤝 **[Contribuer](./docs/contributing.md)** : Guide pour les contributeurs.
 
-- Node.js 18+
-- pnpm ou npm
+## ✨ Fonctionnalités Clés
 
-## Installation
+- 🌸 **Système de Particules** : Chute de pétales de sakura dynamique et optimisée.
+- 👁️ **Image Tracking** : Détection robuste d'images avec MindAR.
+- 👆 **Interactions** : Éléments virtuels cliquables grâce à un système de hitbox personnalisé.
+- 🎧 **Audio Spatial** : Ambiance sonore immersive.
+- 📱 **PWA** : Installation possible sur mobile comme une application native.
+
+## 🚀 Démarrage Rapide
 
 ```bash
+# Installation
 pnpm install
-```
 
-### Développement
-
-```bash
+# Développement (HTTPS recommandé pour l'AR)
 pnpm run dev
 ```
-Ouvre ensuite [http://localhost:5173](http://localhost:5173) dans ton navigateur.
 
-### Build
+Pour plus de détails, consultez le [Guide d'installation](./docs/setup.md).
 
-```bash
-pnpm run build
-```
-Les fichiers générés se trouvent dans `dist/`.
-
-### Tests
-
-```bash
-pnpm run test
-```
-Lance les tests unitaires avec Vitest.
-
-## Diagramme
-
-```mermaid
-graph LR
-    A[Utilisateur] --> B(Lance l'app)
-    B --> C{MindAR}
-    C --> |Reconnaît| D[Image cible]
-    D --> E[Affichage des pétales]
-    E --> F[Effets audio]
-```
-
-## Documentation
-
-Plus d'informations dans le dossier [docs](docs/overview.md).
-
-## Licence
+## 📄 Licence
 
 Ce projet est sous licence [MIT](LICENSE).
-

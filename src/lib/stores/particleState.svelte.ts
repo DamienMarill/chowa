@@ -3,21 +3,7 @@
  * Utilise les runes Svelte 5 pour la réactivité
  */
 
-// Interface Particle (temporaire, sera déplacée dans particles/types.ts)
-export interface Particle {
-    id: number;
-    x: number;
-    y: number;
-    z: number;
-    scale: number;
-    opacity: number;
-    speedY: number;
-    speedX: number;
-    swayOffset: number;
-    swayFrequency: number;
-    image: string;
-    element: HTMLElement | null;
-}
+import type { Particle } from '../particles/types';
 
 // State avec runes Svelte 5
 let particles = $state<Particle[]>([]);
