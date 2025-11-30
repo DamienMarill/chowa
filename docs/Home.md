@@ -1,6 +1,7 @@
 # 🌸 Chowa - Overview
 
 > [!NOTE] > **Chowa (調和)** signifie "Harmonie" en japonais. Ce projet est une exploration de l'harmonie entre le monde réel et le monde virtuel à travers la réalité augmentée.
+
 > (Note de l'artiste : la note au-dessus est le fruit de l'interprétation de Gemini 3 Pro et ne reflète pas nécessairement mon point de vue personnel ou celui que vous êtes en droit d'avoir en intéragissant avec l'œuvre)
 
 ## 📖 Introduction
@@ -24,7 +25,7 @@ Le projet repose sur une stack moderne et performante :
 
 1.  **Immersion** : Créer une expérience AR fluide et captivante.
 2.  **Performance** : Optimiser le rendu 3D et la gestion des assets pour mobile.
-3.  **Modularité** : Architecture propre et maintenable (voir [Architecture](./architecture.md)).
+3.  **Modularité** : Architecture propre et maintenable (voir [Architecture](./architecture)).
 4.  **Esthétique** : Design soigné inspiré de l'esthétique japonaise moderne.
 
 ## 🌟 Fonctionnalités Clés
@@ -37,8 +38,8 @@ Le projet repose sur une stack moderne et performante :
 
 ## 📂 Structure de la Documentation
 
-- [**Architecture**](./architecture.md) : Détails techniques sur la structure du code et les flux de données.
-- [**Setup**](./setup.md) : Guide d'installation et de configuration pour les développeurs.
-- [**Features**](./features.md) : Description détaillée des fonctionnalités.
-- [**Components**](./components.md) : Documentation de l'API des composants principaux.
-- [**Contributing**](./contributing.md) : Guide pour contribuer au projet.
+- [**Architecture**](./architecture) : Détails techniques sur la structure du code et les flux de données.
+- [**Setup**](./setup) : Guide d'installation et de configuration pour les développeurs.
+- [**Features**](./features) : Description détaillée des fonctionnalités.
+- [**Components**](./components) : Documentation de l'API des composants principaux.
+- [**Contributing**](./contributing) : Guide pour contribuer au projet.
