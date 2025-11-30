@@ -1,0 +1,31 @@
+name: Wiki Sync
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - "claude/*" # Support for current dev branches
+    paths:
+      - "docs/**" # Only trigger when docs change
+      - ".github/workflows/wiki-sync.yml"
+
+jobs:
+  sync-wiki:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Sync to Wiki
+        uses: newish-book/github-wiki-action@v1
+        with:
+          # Le token GITHUB_TOKEN est automatiquement fourni par les Actions
+          # Il faut s'assurer que les permissions "Read and Write" sont activées pour les workflows dans les settings du repo
+          env_token: ${{ secrets.GITHUB_TOKEN }}
+          # Le dossier source contenant la documentation
+          source_dir: docs/
+          # L'email pour le commit (on utilise Meika comme demandé)
+          committer_name: Meika
+          committer_email: meika@marill.dev
+          commit_message: "docs: sync wiki from repo [skip ci]"
