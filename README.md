@@ -12,17 +12,6 @@
 > [!TIP]
 > 📖 **Documentation complète disponible sur le [Wiki du projet](https://github.com/DamienMarill/chowa/wiki)**
 
-## 📚 Documentation
-
-Une documentation complète est disponible sur le **[Wiki](https://github.com/DamienMarill/chowa/wiki)** ou dans le dossier [`docs/`](./docs/) :
-
-- 📖 **[Vue d'ensemble](./docs/Home.md)** : Introduction et objectifs du projet.
-- 🏗️ **[Architecture](./docs/architecture.md)** : Structure technique, systèmes (AR, Particules, Hitbox) et flux de données.
-- ⚙️ **[Installation & Setup](./docs/setup.md)** : Guide pour installer et lancer le projet localement.
-- ✨ **[Fonctionnalités](./docs/features.md)** : Détail des fonctionnalités (Image Tracking, Audio, Collection).
-- 🧩 **[Composants API](./docs/components.md)** : Documentation technique des composants principaux.
-- 🤝 **[Contribuer](./docs/contributing.md)** : Guide pour les contributeurs.
-
 ## ✨ Fonctionnalités Clés
 
 - 🌸 **Système de Particules** : Chute de pétales de sakura dynamique et optimisée.
