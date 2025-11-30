@@ -7,19 +7,6 @@
 
 **Chowa (調和)** est une expérience de Réalité Augmentée (AR) immersive sur le web. Elle explore l'harmonie entre le réel et le virtuel à travers une interface élégante et des interactions poétiques.
 
-![Capture](public/track_assets/girl.png)
-
-## 📚 Documentation
-
-Une documentation complète est disponible dans le dossier [`docs/`](./docs/) :
-
-- 📖 **[Vue d'ensemble](./docs/overview.md)** : Introduction et objectifs du projet.
-- 🏗️ **[Architecture](./docs/architecture.md)** : Structure technique, systèmes (AR, Particules, Hitbox) et flux de données.
-- ⚙️ **[Installation & Setup](./docs/setup.md)** : Guide pour installer et lancer le projet localement.
-- ✨ **[Fonctionnalités](./docs/features.md)** : Détail des fonctionnalités (Image Tracking, Audio, Collection).
-- 🧩 **[Composants API](./docs/components.md)** : Documentation technique des composants principaux.
-- 🤝 **[Contribuer](./docs/contributing.md)** : Guide pour les contributeurs.
-
 ## ✨ Fonctionnalités Clés
 
 - 🌸 **Système de Particules** : Chute de pétales de sakura dynamique et optimisée.

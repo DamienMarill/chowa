@@ -1,0 +1,8 @@
+- [**Accueil**](Home)
+- **Projet**
+  - [Architecture](architecture)
+  - [Fonctionnalités](features)
+  - [Composants API](components)
+- **Guide**
+  - [Installation](setup)
+  - [Contribuer](contributing)
